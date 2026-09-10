@@ -1,0 +1,49 @@
+# The gate: `npm run verify && npm test`.
+#
+# CLAUDE.md calls this the bar for any change, so it runs on every push and
+# pull request rather than living only in a contributor's habits.
+#
+# It runs on Linux as well as macOS deliberately. This server only targets
+# macOS -- every call is an Apple Event to Capture One -- but the test suite is
+# hermetic by design: it replaces child_process.execFile with an in-memory
+# application and runs the generated JXA through vm, so it never launches the
+# app and never touches a photo. A job on Linux, where osascript and Capture One
+# do not exist, is what proves that claim stays true. A test that quietly
+# started shelling out would pass on macOS and fail here.
+name: gate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    name: ${{ matrix.os }} / node ${{ matrix.node }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # node 20 is the floor declared in package.json engines; 22 is current LTS.
+        os: [ubuntu-latest, macos-latest]
+        node: ['20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      # typecheck, then parse every embedded JXA block and reject control
+      # characters in the cooked script text.
+      - run: npm run verify
+
+      # builds to dist/ first, then runs the mocked suites against it.
+      - run: npm test
