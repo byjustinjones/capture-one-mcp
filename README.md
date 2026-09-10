@@ -1,5 +1,7 @@
 # capture-one-mcp
 
+[![gate](https://github.com/byjustinjones/capture-one-mcp/actions/workflows/gate.yml/badge.svg)](https://github.com/byjustinjones/capture-one-mcp/actions/workflows/gate.yml)
+
 An MCP server that drives **Capture One Pro** on macOS through its
 AppleScript/JXA scripting interface — sessions and catalogs, collections,
 variants, adjustments, layers, recipes and output.
