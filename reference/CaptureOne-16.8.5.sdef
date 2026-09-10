@@ -1,0 +1,2212 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE dictionary SYSTEM "file://localhost/System/Library/DTDs/sdef.dtd">
+<dictionary title="Dictionary">
+
+	<suite name="Standard Suite" code="????" description="Common classes and commands for all applications.">
+	
+		<command name="open" code="aevtodoc" description="Open a document.">
+			<direct-parameter description="The file(s) to be opened.">
+				<type type="file" list="yes"/>
+			</direct-parameter>
+		</command>
+		
+		<command name="close" code="coreclos" description="Close a document.">
+			<cocoa class="NSCloseCommand"/>
+			<direct-parameter type="specifier" description="the document(s) or window(s) to close."/>
+		</command>
+		
+		<command name="quit" code="aevtquit" description="Quit the application.">
+			<cocoa class="NSQuitCommand"/>
+		</command>
+		
+		<command name="count" code="corecnte" description="Return the number of elements of a particular class within an object.">
+			<cocoa class="NSCountCommand"/>
+			<direct-parameter type="specifier" description="The objects to be counted."/>
+			<parameter name="each" code="kocl" type="type" optional="yes" description="The class of objects to be counted." hidden="yes">
+				<cocoa key="ObjectClass"/>
+			</parameter>
+			<result type="integer" description="The count."/>
+		</command>
+		
+		<command name="delete" code="coredelo" description="Delete an object.">
+			<cocoa class="NSDeleteCommand"/>
+			<direct-parameter type="specifier" description="The object(s) to delete."/>
+		</command>
+
+		<command name="exists" code="coredoex" description="Verify if an object exists."> 
+			<cocoa class="NSExistsCommand"/> 
+			<direct-parameter description="the object in question" type="specifier"/> 
+			<result description="true if it exists, false if not" type="boolean"/> 
+		</command> 
+		
+		<command name="make" code="corecrel" description="Create a new object.">
+			<cocoa class="NSCreateCommand"/>
+			<parameter name="new" code="kocl" type="type" description="The class of the new object.">
+				<cocoa key="ObjectClass"/>
+			</parameter>
+			<parameter name="at" code="insh" type="location specifier" optional="yes" description="The location at which to insert the object.">
+				<cocoa key="Location"/>
+			</parameter>
+			<parameter name="with data" code="data" type="any" optional="yes" description="The initial contents of the object.">
+				<cocoa key="ObjectData"/>
+			</parameter>
+			<parameter name="with properties" code="prdt" type="record" optional="yes" description="The initial values for properties of the object.">
+				<cocoa key="KeyDictionary"/>
+			</parameter>
+			<result type="specifier" description="The new object."/>
+		</command>
+
+		<command name="move" code="coremove" description="Move an object to a new location.">
+			<cocoa class="POMoveCommand"/>
+			<direct-parameter type="specifier" description="The object(s) to move."/>
+			<parameter name="to" code="insh" type="location specifier" description="The new location for the object(s).">
+				<cocoa key="ToLocation"/>
+			</parameter>
+		</command>
+
+		<class name="application" code="capp" description="The application's top-level scripting object.">
+			<cocoa class="NSApplication"/>
+			<property name="name" code="pnam" type="text" access="r" description="The name of the application."/>
+			<property name="frontmost" code="pisf" type="boolean" access="r" description="Is this the active application?">
+				<cocoa key="isActive"/>
+			</property>
+			<property name="version" code="vers" type="text" access="r" description="The version number of the application."/>
+			<element type="window" access="r">
+				<cocoa key="orderedWindows"/>
+			</element>
+			<responds-to name="quit">
+				<cocoa method="handleQuitScriptCommand:"/>
+			</responds-to>
+		</class>
+
+		<class name="window" code="cwin" description="A window.">
+			<cocoa class="NSWindow"/>
+			<property name="name" code="pnam" type="text" access="r" description="The title of the window.">
+				<cocoa key="title"/>
+			</property>
+			<property name="id" code="ID  " type="integer" access="r" description="The unique identifier of the window.">
+				<cocoa key="uniqueID"/>
+			</property>
+			<property name="index" code="pidx" type="integer" description="The index of the window, ordered front to back.">
+				<cocoa key="orderedIndex"/>
+			</property>
+			<property name="bounds" code="pbnd" type="rectangle" description="The bounding rectangle of the window.">
+				<cocoa key="boundsAsQDRect"/>
+			</property>
+			<property name="closeable" code="hclb" type="boolean" access="r" description="Does the window have a close button?">
+				<cocoa key="hasCloseBox"/>
+			</property>
+			<property name="miniaturizable" code="ismn" type="boolean" access="r" description="Does the window have a minimize button?">
+				<cocoa key="isMiniaturizable"/>
+			</property>
+			<property name="miniaturized" code="pmnd" type="boolean" description="Is the window minimized right now?">
+				<cocoa key="isMiniaturized"/>
+			</property>
+			<property name="resizable" code="prsz" type="boolean" access="r" description="Can the window be resized?">
+				<cocoa key="isResizable"/>
+			</property>
+			<property name="visible" code="pvis" type="boolean" description="Is the window visible right now?">
+				<cocoa key="isVisible"/>
+			</property>
+			<property name="zoomable" code="iszm" type="boolean" access="r" description="Does the window have a zoom button?">
+				<cocoa key="isZoomable"/>
+			</property>
+			<property name="zoomed" code="pzum" type="boolean" description="Is the window zoomed right now?">
+				<cocoa key="isZoomed"/>
+			</property>
+
+			<property name="document" code="docu" type="document" access="r" description="The document whose contents are displayed in the window."/>
+			
+			<responds-to name="close">
+				<cocoa method="handleCloseScriptCommand:"/>
+			</responds-to>
+		</class>
+		
+	</suite>
+
+	<suite name="Capture One Suite" code="Cap1" description="Common classes and commands for Capture One.">
+		<value-type name="RGB color" code="cRGB" description="Color defined by red, green, and blue values (each 0-65535).">
+			<cocoa class="NSColor"/>
+		</value-type>
+		<enumeration name="nextcaptureadjustments" code="NCAd">
+			<cocoa name="NextCaptureAdjustments"/>
+			<enumerator name="Default" code="NCda">
+				<cocoa name="DefaultAdjustments"/>
+			</enumerator>
+			<enumerator name="Last" code="NCla">
+				<cocoa name="LastAdjustments"/>
+			</enumerator>
+			<enumerator name="Primary" code="NCpa">
+				<cocoa name="PrimaryAdjustments"/>
+			</enumerator>
+			<enumerator name="Using Clipboard" code="NCuc">
+				<cocoa name="UsingClipboardAdjustments"/>
+			</enumerator>
+			<enumerator hidden="yes" name="Last With Variants" code="Nlwv">
+				<cocoa name="LastWithVariantsAdjustments"/>
+			</enumerator>
+			<enumerator hidden="yes" name="Primary With Variants" code="Npwv">
+				<cocoa name="PrimaryWithVariantsAdjustments"/>
+			</enumerator>
+		</enumeration>
+		<enumeration name="shutterlatency" code="ShLa">
+			<cocoa name="ShutterLatency"/>
+			<enumerator name="Normal Latency" code="SLNo" description="Normal(Long) Shutter Latency">
+				<cocoa name="NormalShutterLatency"/>
+			</enumerator>
+			<enumerator name="Zero Latency" code="SLZe" description="Zero(Short) Shutter Latency">
+				<cocoa name="ZeroShutterLatency"/>
+			</enumerator>
+			<enumerator name="Unknown Latency" code="SLUn" description="Unknown Shutter Latency - may not be supported">
+				<cocoa name="UnknownShutterLatency"/>
+			</enumerator>
+		</enumeration>
+
+        <enumeration name="compareModes" code="BAcm">
+            <cocoa name="CompareBeforeAfterConfigurationMode"/>
+            <enumerator name="display before" code="COaf" description="Display the image without adjustments (Full View)">
+                <cocoa integer-value="0"/>
+            </enumerator>
+            <enumerator name="display split" code="CObf" description="Display the image without adjustments (Split View Slider)">
+                <cocoa integer-value="1"/>
+            </enumerator>
+        </enumeration>
+
+        <enumeration name="people mask area" code="PMar" description="An area selectable for AI people masking.">
+            <enumerator name="body skin" code="PMbs"><cocoa integer-value="0"/></enumerator>
+            <enumerator name="face skin" code="PMfs"><cocoa integer-value="1"/></enumerator>
+            <enumerator name="eyebrows" code="PMeb"><cocoa integer-value="2"/></enumerator>
+            <enumerator name="lips" code="PMlp"><cocoa integer-value="3"/></enumerator>
+            <enumerator name="hair" code="PMhr"><cocoa integer-value="4"/></enumerator>
+            <enumerator name="iris and pupil" code="PMip"><cocoa integer-value="5"/></enumerator>
+            <enumerator name="sclera" code="PMsc"><cocoa integer-value="6"/></enumerator>
+            <enumerator name="clothes" code="PMcl"><cocoa integer-value="7"/></enumerator>
+        </enumeration>
+
+		<class name="application" code="capp" description="Capture One application class.  Directly contained image and variant elements are for the current collection of the current document." inherits="application">
+			<cocoa class="Application"/>
+
+			<element type="document">
+				<cocoa key="scriptDocuments"/>
+			</element>
+			
+			<element type="image" access="r">
+				<cocoa key="images"/>
+				<accessor style="test"/>
+				<accessor style="relative"/>
+				<accessor style="range"/>
+				<accessor style="name"/>
+				<accessor style="id"/>
+				<accessor style="index"/>
+			</element>
+            
+            <element type="variant" access="r"/>
+            <element type="keyword library"/>
+			
+			<property name="current document" code="Cudo" description="(PRO Only) The currently frontmost document." type="document"/>
+
+            <property name="viewer" code="COVw" type="viewer configuration" description="The Viewer window's viewer settings."/>
+
+            <property name="progress total units" code="PrTo" type="integer" description="Set this property to the total number of units of work your script will be performing. While this property is greater than the 'progress completed units' property, Capture One will display a progress window."/>
+            <property name="progress completed units" code="PrCo" type="integer" description="Set this property to the number of units of work your script has performed."/>
+            <property name="progress text" code="PrDe" type="text" description="Set this to a simple explanation of the work being performed. (optional)"/>
+            <property name="progress additional text" code="PrDa" type="text" description="Set this to additional specifics of the work being performed. (optional)"/>
+
+			<property name="capture done script" code="CDas" description="(PRO Only) The AppleScript that gets called when an image has completed being captured.">
+				<type type="text"/>
+				<type type="file"/>
+			</property>
+			<property name="processing done script" code="Eops" description="(PRO Only) The AppleScript that gets called when a file is finished processing. The script is passed the identifier string of the finished batch job in argv 1, the original RAW file path in argv 2, and a list of the output file paths in argv 3.">
+				<type type="text"/>
+				<type type="file"/>
+			</property>
+			<property name="batch done script" code="BDas" description="(PRO Only) The AppleScript that gets called when the batch process queue completes. The script is passed the list of output paths in argv.">
+				<type type="text"/>
+				<type type="file"/>
+			</property>
+			<property name="live view became ready script" code="LVrd" description="(PRO Only) The AppleScript that gets called when Live View has become ready.">
+				<type type="text"/>
+				<type type="file"/>
+			</property>
+			<property name="live view will close script" code="LVwc" description="(PRO Only) The AppleScript that gets called when Live View is about to close.">
+				<type type="text"/>
+				<type type="file"/>
+			</property>
+			<property name="live view done script" code="LVas" description="(PRO Only) The AppleScript that gets called when Live View is closed.">
+				<type type="text"/>
+				<type type="file"/>
+			</property>
+            <property name="importing done script" code="IMas" description="(PRO Only) The AppleScript that gets called when the importing queue completes.">
+                <type type="text"/>
+                <type type="file"/>
+            </property>
+            <property name="barcode scanned script" code="BCsc" description="(Enterprise Only) The AppleScript that gets called when a barcode has been scanned.">
+                <type type="text"/>
+                <type type="file"/>
+            </property>
+            <property name="primary variant adjusted script" code="VaAj" description="The AppleScript that gets called when the primary variant's adjustment settings have changed.">
+                <type type="text"/>
+                <type type="file"/>
+            </property>
+            <property name="selection changed script" code="VaSe" description="The AppleScript that gets called when the selected variants have changed.">
+                <type type="text"/>
+                <type type="file"/>
+            </property>
+			<property name="selected variants" code="csev" description="List of selected variants in the front document's browser (deprecated)." access="r" hidden="yes">
+				<type type="variant" list="yes"/>
+			</property>
+			<property name="all variants" code="calv" description="(PRO Only) List of all variants in the front document's browser (deprecated)." access="r" hidden="yes">
+				<type type="variant" list="yes"/>
+			</property>
+            <property name="rate auto advance" code="CavR" type="boolean" description="If Capture One should automatically select the next image after an image's rating has been changed from the user interface."/>
+            <property name="tag auto advance" code="CavT" type="boolean" description="If Capture One should automatically select the next image after an image's color tag has been changed from the user interface."/>
+			<property name="app version" code="cver" description="The version of Capture One" type="text" access="r"/>
+			<property name="primary variant" code="cprv" description="The primary selected variant" type="variant" access="r"/>
+			<property name="next capture adjustments" code="cnca" description="(PRO Only) When an image is captured, what adjustments should be applied? (deprecated)" type="nextcaptureadjustments" hidden="yes"/>
+			<property name="shutter latency" code="cshl" description="(PRO Only) Choose the Shutter Latency Mode used when capturing. Only has an effect when a camera is connected." type="shutterlatency"/>
+            <property name="display acceleration" code="Cocd" type="openCLStatus" description="When should hardware acceleration be used for display." hidden="yes">
+                <cocoa key="openCLDisplay"/>
+			</property>
+            <property name="processing acceleration" code="Copr" type="openCLStatus" description="When should hardware acceleration be used.">
+                <cocoa key="openCLProcessing"/>
+			</property>
+            <property name="edit all selected variants" code="CEAS" type="boolean" description="Whether or not some UI actions (applying a style or preset, rating, color tagging, etc) are to be applied to all selected variants or only to the primary variant.  Note that this property has no effect on AppleScript, where variants must always be explicitly specified in all contexts." access="rw">
+                <cocoa key="editSelected"/>
+            </property>
+            <property name="live view status" code="CoLv" type="liveViewStatus" description="Changing the status may require a delay before reading this property again to reflect the new status."/>
+            <property name="available styles" code="COas" access="r" description="The names of all styles and presets currently available.">
+                 <type type="text" list="yes"/>
+            </property>
+			<responds-to name="open">
+				<cocoa method="handleOpenScriptCommand:"/>
+			</responds-to>
+            <responds-to name="migrate">
+                <cocoa method="handleMigrateDocumentScriptCommand:"/>
+            </responds-to>
+			<responds-to name="begin live view">
+				<cocoa method="handleBeginLiveViewScriptCommand:"/>
+			</responds-to>
+			<responds-to name="end live view">
+				<cocoa method="handleEndLiveViewScriptCommand:"/>
+			</responds-to>
+            <responds-to name="apply workspace">
+                <cocoa method="handleApplyWorkspaceCommand:"/>
+            </responds-to>
+            <responds-to name="silently quit">
+                <cocoa method="handleSilentQuitScriptCommand:"/>
+            </responds-to>
+            <property name="test name" code="Ctnm" type="text" hidden="yes"/>
+            <responds-to name="test mark" hidden="yes">
+                <cocoa method="handleTestMarkCommand:"/>
+            </responds-to>
+            <responds-to name="test internal event" hidden="yes">
+                <cocoa method="handleTestInternalEventCommand:"/>
+            </responds-to>
+            <responds-to name="test async event" hidden="yes">
+                <cocoa method="handleTestAsyncEventCommand:"/>
+            </responds-to>
+
+            <property name="compare enabled" type="boolean" code="BAen" description="Enable/disable the Before/After.">
+                <cocoa key="compareBeforeAfterEnabled"/>
+            </property>
+
+            <property name="compare mode" type="compareModes" code="COba" description="Set/get the Before/After mode.">
+                <cocoa key="compareBeforeAfterMode"/>
+            </property>
+
+        </class>
+
+		<enumeration name="documentType" code="COdt">
+			<enumerator name="session" code="COsd" description="Session document."/> 
+			<enumerator name="catalog" code="COct" description="Catalog document."/> 
+		</enumeration> 
+
+        <enumeration name="toolbarDisplayMode" code="COTD">
+            <enumerator name="off" code="CTdo"/>
+            <enumerator name="icon and text" code="CTit"/>
+            <enumerator name="icon only" code="CTio"/>
+        </enumeration>
+
+        <enumeration name="auto select mode" code="Ceas">
+            <enumerator name="disabled" code="CSnv"/>
+            <enumerator name="immediately" code="CSim"/>
+            <enumerator name="when ready (without ai)" code="CSai"/>
+            <enumerator name="when ready" code="CSwr"/>
+        </enumeration>
+
+        <class name="document" code="docu" description="A Capture One document.  Directly contained image and variant elements are for the current collection.">
+			<cocoa class="DocumentAppleScript"/>
+			<property name="name" code="pnam" type="text" access="r" description="The name of the document.">
+				<cocoa key="displayName"/>
+			</property>
+            <property name="id" code="ID  " type="text" access="r" description="The unique identifier of the document.">
+                <cocoa key="uuid"/>
+            </property>
+			<element description="The images in the current collection" type="image" access="r">
+				<cocoa key="images"/>
+				<accessor style="test"/>
+				<accessor style="relative"/>
+				<accessor style="range"/>
+				<accessor style="name"/>
+				<accessor style="index"/>
+			</element>
+			<element type="recipe">
+				<cocoa key="scriptRecipes"/>
+			</element>
+			<element type="job">
+				<cocoa key="scriptJobs"/>
+			</element>
+			<element type="collection"/>
+			<element type="variant"/>
+			<element type="keyword"/>
+            <element type="tool tab"/>
+            <element type="toolbar item"/>
+            <element type="client viewer"/>
+            <element type="user crop aspect ratio"/>
+            <property name="window toolbar mode" code="CWtm" type="toolbarDisplayMode"/>
+            <property name="window toolbar" code="CVwT" type="boolean" hidden="yes"/>
+			<property name="current collection" code="Cuco" description="The current collection." type="collection"/>
+            <property name="current recipe" code="Cure" description="The currently selected recipe." type="recipe"/>
+            <property name="show enabled recipes only" code="COer" type="boolean" access="rw" description="If the document's 'Process Recipes' tool should only be showing recipes that are enabled.  This property does *not* affect the availability of recipe elements via AppleScript."/>
+			<property name="template" code="COtm" access="r" description="The template name to use (during 'make new' only)" type="text">
+				<cocoa key="templateName"/>
+			</property>
+			<property name="path" code="ipth" access="r" description="The folder item containing the document.">
+				<type type="text"/>
+				<type type="file"/>
+				<cocoa key="rootFolder"/>
+			</property>
+			<property name="folder" code="COdf" access="r" type="file" description="The folder item of the document."/>
+			<property name="kind" code="COdk" type="documentType" access="r" description="The kind of document.">
+				<cocoa key="documentType"/>
+			</property>
+            <property name="filters" code="COft" description="The current filters being used.  Set to an empty list {} to clear the filters.">
+ 				<type type="text" list="yes"/>
+			</property>
+           <property name="available filters" code="COaf" access="r" description="The filters currently available to be used in this document.">
+				<type type="text" list="yes"/>
+			</property>
+			<property name="output" code="COof" access="rw" description="The Output folder item.">
+				<type type="text"/>
+				<type type="file"/>
+				<cocoa key="outputFolder"/>
+			</property>
+			<property name="output sub path" hidden="yes" code="COos" type="text" access="rw" description="The Output sub folder item, with tokens in brackets e.g. [Rating].">
+				<cocoa key="outputSubFolder"/>
+			</property>
+            <property name="output job name token" code="COjT" type="text" access="rw" description="The Cross Recipe Job Name token contents - with inner tokens in brackets e.g. [Rating].">
+                <cocoa key="outputJobNameToken"/>
+            </property>
+            <property name="output subfolder token" code="COsT" type="text" access="rw" description="The Cross Recipe Job Name token contents - with inner tokens in brackets e.g. [Rating].">
+                <cocoa key="outputSubfolderToken"/>
+            </property>
+			<property name="output counter" code="COOc" type="integer" access="rw"/>
+			<property name="output counter increment" code="COOi" type="integer" access="rw"/>
+			<property name="captures" code="COcf" access="rw" description="The Capture folder item.">
+				<type type="text"/>
+				<type type="file"/>
+				<cocoa key="capturesFolder"/>
+			</property>
+			<property name="selects" code="COsf" access="rw" description="The Selects folder item (Session only).">
+				<type type="text"/>
+				<type type="file"/>
+				<cocoa key="selectsFolder"/>
+			</property>
+			<property name="trash" code="COtf" access="rw" description="The Trash folder item (Session only).">
+				<type type="text"/>
+				<type type="file"/>
+				<cocoa key="trashFolder"/>
+			</property>
+            <property name="barcode" code="CObc" type="text" description="(Enterprise Only) The current scanned barcode value." access="rw"/>
+			<property name="all variants" code="Cdav" description="List of all variants in the current collection (deprecated)." access="r" hidden="yes">
+				<type type="variant" list="yes"/>
+			</property>
+            <property name="crop aspect ratio" code="vcar" type="text" description="The current general crop aspect ratio.  To access all available crop aspect ratios or to affect a specific variant, see variant properties."/>
+			<responds-to name="browse">
+				<cocoa method="handleBrowseScriptCommand:"/>
+			</responds-to>
+			<responds-to name="close">
+				<cocoa method="handleCloseScriptCommand:"/>
+			</responds-to>
+			<responds-to name="refresh" hidden="yes">
+				<cocoa method="handleRefreshScriptCommand:"/>
+			</responds-to>
+			<property name="processing queue enabled" code="COQP" type="boolean" access="rw" description="Whether or not the output processing batch job queue is running.  Can be changed.">
+				<cocoa key="processQueueEnabled"/>
+			</property>
+            <property name="document window" code="dWin" type="window" description="The document's associated window."/>
+            <property name="tool settings" code="COTl" type="tools configuration" description="The document's tool settings.  See also the document's “tool tab” elements for specific tab and tool configuration."/>
+            <property name="viewer" code="COVw" type="viewer configuration" description="The document's viewer settings.  Note that any changes to one document's viewer will affect all document viewers."/>
+            <property name="browser" code="COBr" type="browser configuration" description="The document's browser settings."/>
+            <property name="output name format" hidden="yes" code="COOF" type="text" access="rw" description="The current process output naming format, with tokens in brackets e.g. [Rating]."/>
+			<property name="output name" hidden="yes" code="COjn" type="text" access="rw" description="The current process output job name."/>
+			<property name="import counter" code="COic" type="integer" access="rw" description="The current import counter.  The next item imported will be incremented from this." hidden="yes"/>
+			<property name="capture counter" code="COCc" type="integer" access="rw"/>
+			<property name="capture counter increment" code="COCi" type="integer" access="rw"/>
+			<property name="capture name format" code="COCF" type="text" access="rw" description="The current next capture naming format, with tokens in brackets e.g. [Rating]."/>
+			<property name="capture name" code="COCn" type="text" access="rw" description="The current next capture name."/>
+			<property name="last captured file" code="COCp" type="file" access="r" description="The last captured image file."/>
+            <property name="normalize target color" code="COnc" type="RGB color" access="rw" description="The target color for applying normalizations, using the Generic RGB profile."/>
+            <property name="camera" code="COco" type="camera" access="r" description="The selected camera."/>
+            <property name="available camera identifiers" code="CAid" access="r" description="The identifiers of all tethered cameras, for use with the 'select camera' command.">
+                <type type="text" list="yes"/>
+            </property>
+            <property name="auto select new capture" code="Casn" type="auto select mode" access="rw"/>
+            <property name="auto select new capture pause" code="Casp" type="boolean" access="rw"/>
+            <property name="workspace lock PIN" code="COlp" type="text" access="w" description="(Studio Only)">
+                <cocoa key="workspaceLockPassword"/>
+            </property>
+            <property name="copy stand" code="COcs" type="control device" access="r" description="(CH Only) The attached column control copy stand device."/>
+			<property name="batch rename settings" code="Cbrs" description="The document's batch rename settings." type="batch rename options"/>
+			<property name="import settings" code="Cimp" type="import options" description="The document's import settings."/>
+			<property name="export original settings" code="Cexp" type="export original options" description="The document's export original settings."/>
+            <property name="next capture settings" code="Cncs" description="What settings and adjustments are applied when an image is captured from a tethered camera." type="next capture options"/>
+            <property name="overlay settings" code="COst" description="The document's overlay settings." type="overlay options"/>
+            <property name="server settings" code="Ccps" type="server options" description="The document's Capture Pilot server settings."/>
+            <property name="served variant" code="Ccsv" description="(Studio Only) The variant most recently viewed from Capture Pilot." type="variant" access="r"/>
+            <property name="grid settings" code="COgr" type="grid options" description="The document's grid settings."/>
+            <property name="guide settings" code="COgs" type="guide options" description="(Studio Only) The document's guide settings."/>
+			<responds-to name="select camera">
+				<cocoa method="handleChooseCameraScriptCommand:"/>
+			</responds-to>
+			<responds-to command="select">
+				<cocoa method="handleSelectCommand:"/>
+			</responds-to>
+			<responds-to command="deselect">
+				<cocoa method="handleDeselectCommand:"/>
+			</responds-to>
+            <responds-to command="change selection">
+                <cocoa method="handleChangeSelectCommand:"/>
+            </responds-to>
+			<responds-to command="batch rename">
+				<cocoa method="handleBatchRenameCommand:"/>
+			</responds-to>
+			<responds-to command="import">
+				<cocoa method="handleImportCommand:"/>
+			</responds-to>
+			<responds-to command="export originals">
+				<cocoa method="handleExportOriginalsCommand:"/>
+			</responds-to>
+            <responds-to command="backup now">
+                <cocoa method="handleBackupCommand:"/>
+            </responds-to>
+			<responds-to command="create template">
+				<cocoa method="handleCreateTemplateCommand:"/>
+			</responds-to>
+		</class>
+
+        <class name="toolbar item" code="COti" description="A Capture One window toolbar item.">
+            <cocoa class="ToolbarItemAppleScript"/>
+            <property name="name" code="pnam" type="text" access="r"/>
+            <property name="id" code="ID  " type="text" access="r" description="The unique identifier of the item.">
+                <cocoa key="uuid"/>
+            </property>
+        </class>
+
+        <class name="tool tab" code="COtt" description="A Capture One tool tab. Newly created tool tabs must have either a standard id, or a name and valid icon number (1-18).">
+            <cocoa class="InspectorToolTabAppleScript"/>
+            <element type="tool"/>
+            <property name="name" code="pnam" type="text" access="r"/>
+            <property name="id" code="ID  " type="text" access="r" description="The unique identifier of the tab.">
+                <cocoa key="uuid"/>
+            </property>
+            <property name="icon number" code="CTin" type="integer" access="r"/>
+            <property name="selected" code="vsel" description="Is this tool tab selected in the UI." type="boolean" access="rw"/>
+        </class>
+
+        <class name="tool" code="COto" description="A Capture One tool.">
+            <cocoa class="InspectorToolAppleScript"/>
+            <property name="name" code="pnam" type="text" access="r"/>
+            <property name="id" code="ID  " type="text" access="r" description="The unique identifier of the tool.">
+                <cocoa key="uuid"/>
+            </property>
+            <property name="expanded" code="CTex" description="Is this tool expanded in the UI." type="boolean" access="rw"/>
+            <property name="pinned" code="COtp" description="Is this tool pinned in the UI. An unpinned tool appears in the scrollable tools area." type="boolean" access="rw"/>
+            <property name="locked" code="COlk" description="(Studio Only) Is this tool locked." type="boolean" access="rw"/>
+        </class>
+        
+        <enumeration name="focus indication" code="Cfce" hidden="yes">
+            <enumerator name="no indicator" code="Cfno"/>
+            <enumerator name="focused" code="Cffo"/>
+            <enumerator name="unfocused" code="Cfun"/>
+            <enumerator name="too near" code="Cftn"/>
+            <enumerator name="too far" code="Cftf"/>
+            <enumerator name="front focus" code="Cfff"/>
+            <enumerator name="behind focus" code="Cfbf"/>
+            <enumerator name="driving" code="Cfdr"/>
+            <enumerator name="tracking" code="Cftr"/>
+            <enumerator name="unknown" code="Cfuk" description="No information, not possible, error, or other unknown indicator status."/>
+        </enumeration>
+
+		<class name="camera" code="CObj" description="A camera. Not all properties are supported by all cameras.">
+			<cocoa class="CameraAppleScript"/>
+            <element type="attribute"/>
+            <element type="focus meter"/>
+			<property name="name" code="pnam" type="text" access="r" description="The name of the camera.">
+				<cocoa key="displayName"/>
+			</property>
+            <property name="identifier" code="CCid" type="text" access="r" description="The camera's unique identifier.">
+                <cocoa key="uuid"/>
+            </property>
+            <property name="retether" code="CCrt" type="boolean" access="rw" description="Is ReTether active for this camera."/>
+            <property name="format" code="CCfm" type="text" access="rw" description="Current image format."/>
+			<property name="sensor plus" code="CCsp" type="text" access="rw" description="Current Sensor+ setting."/>
+			<property name="image area" code="CCar" type="text" access="rw" description="Current image area format."/>
+            <property name="live width" code="CCcw" type="integer" access="r" description="Current live view capture width in pixels."/>
+            <property name="live height" code="CCch" type="integer" access="r" description="Current live view capture height in pixels."/>
+			<property name="ISO" code="CCis" type="text" access="rw" description="Current ISO setting."/>
+			<property name="white balance" code="CCwb" type="text" access="rw" description="Current white balance setting.">
+				<cocoa key="balance"/>
+			</property>
+			<property name="program" code="CCpr" type="text" access="rw" description="Current exposure program mode."/>
+			<property name="exposure step" code="CCst" type="text" access="rw" description="Current exposure step.">
+				<cocoa key="step"/>
+			</property>
+			<property name="shutter speed" code="CCsh" type="text" access="rw" description="Current shutter speed.">
+				<cocoa key="shutter"/>
+			</property>
+			<property name="aperture" code="CCat" type="text" access="rw" description="Current aperture setting."/>
+			<property name="EV adjustment" code="CCev" type="text" access="rw" description="Current exposure value adjustment.">
+				<cocoa key="exposure"/>
+			</property>
+			<property name="flash mode" code="CCfl" type="text" access="rw" description="Current flash mode.">
+				<cocoa key="flash"/>
+			</property>
+			<property name="metering mode" code="CCme" type="text" access="rw" description="Current metering mode.">
+				<cocoa key="metering"/>
+			</property>
+			<property name="meter value" code="CCmv" type="text" access="r" description="Current meter value."/>
+            <property name="focus indicator" code="CCfi" type="focus indication" access="r" description="Current focus indicator value.  Possible values vary by camera model."/>
+            <property name="autofocusing" code="CCfo" type="boolean" access="rw" description="Whether or not this camera is currently autofocusing. Start autofocusing by setting this property to true."/>
+			<property name="available formats" code="CCAf" type="text" access="r" description="The camera's possible image formats (delimited by |'s)."/>
+			<property name="available sensor plus settings" code="CCAS" type="text" access="r" description="The camera's possible Sensor+ settings (delimited by |'s).">
+				<cocoa key="availableSensorPlus"/>
+			</property>
+			<property name="available image area settings" code="CCAa" type="text" access="r" description="The camera's possible image area settings (delimited by |'s).">
+				<cocoa key="availableImageAreas"/>
+			</property>
+			<property name="available ISO settings" code="CCAi" type="text" access="r" description="The camera's possible ISO settings (delimited by |'s).">
+				<cocoa key="availableISOs"/>
+			</property>
+			<property name="available white balance settings" code="CCAw" type="text" access="r" description="The camera's possible white balance settings (delimited by |'s).">
+				<cocoa key="availableBalances"/>
+			</property>
+			<property name="available programs" code="CCAP" type="text" access="r" description="The camera's possible programs (delimited by |'s)."/>
+			<property name="available exposure steps" code="CCAx" type="text" access="r" description="The camera's possible exposure steps (delimited by |'s).">
+				<cocoa key="availableSteps"/>
+			</property>
+			<property name="available shutter speeds" code="CCAs" type="text" access="r" description="The camera's possible shutter speeds (delimited by |'s).">
+				<cocoa key="availableShutters"/>
+			</property>
+			<property name="available aperture settings" code="CCAp" type="text" access="r" description="The camera's possible aperture settings (delimited by |'s).">
+				<cocoa key="availableApertures"/>
+			</property>
+			<property name="available EV adjustments" code="CCAV" type="text" access="r" description="The camera's possible exposure value adjustments (delimited by |'s).">
+				<cocoa key="availableExposures"/>
+			</property>
+			<property name="available flash modes" code="CCAF" type="text" access="r" description="The camera's possible flash modes (delimited by |'s)."/>
+			<property name="available metering modes" code="CCAm" type="text" access="r" description="The camera's possible metering modes (delimited by |'s)."/>
+            <responds-to command="adjust focus">
+                <cocoa method="handleFocusAdjustCommand:"/>
+            </responds-to>
+		</class>
+
+        <class name="control device" code="Cdso" description="A motorized device under the control of Capture One.">
+            <cocoa class="ControlDeviceAppleScript"/>
+            <property name="calibrated" code="Cdca" type="boolean" access="r" description="If the device has been calibrated."/>
+            <property name="calibrating" code="Cdcg" type="boolean" access="rw" description="If the device is currently being calibrated.  Can be set to true to begin calibration, or set to false to cancel a calibration in progress."/>
+            <property name="resolution settings" code="Cdrs" access="rw" description="In the form of {position #1, PPI #1, position #2, PPI #2}, with positions in millimeters.">
+                <type type="real" list="yes"/>
+            </property>
+            <property name="resolution" code="Cdpp" type="real" access="rw" description="The device's current pixels-per-inch value.  Can be set in order to automatically adjust position appropriately.">
+                <cocoa key="pixelsPerInch"/>
+            </property>
+            <property name="position" code="Cdps" type="real" access="rw" description="The device's current position in millimeters.  Can be set in order to adjust to a new position."/>
+        </class>
+
+        <class name="focus meter" code="Clfm" description="A Live View focus meter. Requires the camera to be in Live View.">
+            <cocoa class="FocusMeterAppleScript"/>
+            <property name="width" code="Cwid" type="integer" access="rw" description="The focus meter width in pixels."/>
+            <property name="height" code="Chgt" type="integer" access="rw" description="The focus meter height in pixels."/>
+            <property name="horizontal position" code="CRhz" type="integer" access="rw" description="The horizontal position in pixels."/>
+            <property name="vertical position" code="CRvt" type="integer" access="rw" description="The vertical position in pixels."/>
+            <property name="amount" code="COfa" type="real" access="r" description="The current focus amount."/>
+            <property name="peak amount" code="Clpa" type="real" access="r" description="The maximum focus amount this meter has experienced."/>
+        </class>
+        
+		<enumeration name="attributeUserLevel" code="CPal">
+			<enumerator name="basic" code="alba"/>
+			<enumerator name="advanced" code="alad"/>
+			<enumerator name="developer" code="alde"/>
+		</enumeration>
+
+		<class name="attribute" code="CCPr" description="An attribute of a camera, e.g. Battery level.">
+			<cocoa class="CameraPropertyAppleScript"/>
+			<property name="name" code="pnam" type="text" access="r"/>
+			<property name="read only" code="CPch" type="boolean" access="r" description="Whether or not this attribute's value may be changed via script."/>
+			<property name="user level" code="CPul" type="attributeUserLevel" access="r"/>
+			<property name="available values" code="CPav" access="r" type="text" description="Possible values for this camera attribute (delimited by |'s)."/>
+			<property name="value" code="CPva" access="rw" type="text" description="The current value of this attribute. May be changed if the attribute is not 'read only'."/>
+			<responds-to command="increment">
+				<cocoa method="handleIncrementCommand:"/>
+			</responds-to>
+			<responds-to command="decrement">
+				<cocoa method="handleDecrementCommand:"/>
+			</responds-to>
+		</class>
+
+		<enumeration name="openCLStatus" code="COpc">
+			<enumerator name="never" code="COpn"/>
+			<enumerator name="auto" code="COpa"/>
+		</enumeration>
+
+        <enumeration name="liveViewStatus" code="COls" description="Status for the currently selected camera.">
+            <enumerator name="closed" code="CLof"/>
+            <enumerator name="running" code="CLon"/>
+            <enumerator name="paused" code="CLpa"/>
+        </enumeration>
+
+		<command name="refresh" code="COdcRfsh" description="Refresh the document's display.">
+            <direct-parameter type="document"/>
+		</command>
+
+		<command name="select camera" code="COdcChCa" description="Select a tethered camera to use by name or identifier.  Follow with a delay command in order to use the chosen camera immediately afterward in the same script.  Use an empty name (&quot;&quot;) in order to select no camera.">
+            <direct-parameter type="document"/>
+			<parameter name="name" code="COcm" type="text" description="Name or identifier of a currently tethered camera.">
+				<cocoa key="cameraName"/>
+			</parameter>
+		</command>
+
+		<command name="begin live view" code="COdcLvBg" description="Open Live View for the currently selected camera."/>
+		
+		<command name="end live view" code="COdcLvEn" description="Close Live View for the currently selected camera."/>
+
+        <command name="migrate" code="COdcMgrt" description="Migrate a Capture One document (if necessary) to the current format.">
+            <direct-parameter description="The document file to be migrated.">
+                <type type="text"/>
+                <type type="file"/>
+            </direct-parameter>
+        </command>
+
+        <command name="browse" code="COdcBrws" description="Change the folder being browsed.">
+            <direct-parameter type="document"/>
+			<parameter name="to path" code="COpt" type="text" description="Path to a folder.">
+				<cocoa key="thePath"/>
+			</parameter>
+		</command>
+
+		<enumeration name="collectionType" code="COce"> 
+			<enumerator name="favorite" code="CCfv"/> 
+			<enumerator name="catalog folder" code="CCff"/>
+			<enumerator name="album" code="CCal"/> 
+			<enumerator name="group" code="CCgp"/> 
+			<enumerator name="project" code="CCpj"/> 
+			<enumerator name="smart album" code="CCsm"/> 
+		</enumeration> 
+
+        <enumeration name="sort order" code="CBse">
+            <enumerator name="by name" code="CEnm"/>
+            <enumerator name="by date" code="CEdt"/>
+            <enumerator name="by rating" code="CErt"/>
+            <enumerator name="by color tag" code="CEtg"/>
+            <enumerator name="by camera lens" code="CEln"/>
+            <enumerator name="by ISO" code="CEis"/>
+            <enumerator name="by focal length" code="CEfl"/>
+            <enumerator name="by width" code="CEwi"/>
+            <enumerator name="by height" code="CEht"/>
+            <enumerator name="by file size" code="CEfs"/>
+            <enumerator name="by processed state" code="CEps"/>
+            <enumerator name="by aperture" code="CEap"/>
+            <enumerator name="by shutter speed" code="CEss"/>
+            <enumerator name="by extension" code="CEex"/>
+            <enumerator name="by sequence ID" code="CEsi"/>
+            <enumerator name="by manual" code="CEmn"/>
+        </enumeration>
+
+		<class name="collection" code="COcl" description="An organizational collection.">
+			<cocoa class="CollectionAppleScript"/>
+			<property name="name" code="pnam" type="text" access="r"/>
+            <property name="id" code="ID  " type="text" access="r" description="The unique identifier of the collection.">
+                <cocoa key="uuid"/>
+            </property>
+			<property name="kind" code="COdk" type="collectionType" access="r"/>
+            <property name="user" code="COcu" type="boolean" access="r" description="Indicates if this is a user created collection."/>
+            <property name="synchronizing" code="COsy" type="boolean" access="rw" description="Indicates if this collection is currently in the process of adding or removing images to match what is in the filesystem.  Can be set to true for a session folder collection in order to initiate background synchronization.  For catalog folder collections, use the `synchronize` command instead."/>
+			<property name="folder" code="COdf" access="r" description="The folder location referred to by the collection, if appropriate.">
+                <type type="text"/>
+                <type type="file"/>
+				<cocoa key="file"/>
+            </property>
+			<property name="file" code="COfl" type="file" access="r" description="The folder location referred to by the collection, if appropriate (deprecated)." hidden="yes"/>
+			<property name="rules" code="COrl" type="text" access="r" description="The rules used by the collection, if appropriate."/>
+            <property name="sorting order" code="COso" type="sort order"/>
+            <property name="sorting reversed" code="COsr" type="boolean"/>
+            <property name="compare variant" code="COcv" type="variant" access="rw" description="The pinned variant for comparison.  Use the 'clear compare' command to unpin."/>
+            <property name="compare variants" code="COcx" access="rw" description="Multiple pinned variants for comparison. Use the 'clear compare' command to unpin all of them.">
+                <type type="variant" list="yes"/>
+            </property>
+			<element type="collection"/>
+			<element type="image"/>
+			<element type="variant"/>
+			<responds-to command="synchronize">
+				<cocoa method="handleSynchronizeCommand:"/>
+			</responds-to>
+			<responds-to command="add inside">
+				<cocoa method="handleAddCommand:"/>
+			</responds-to>
+			<responds-to command="move inside">
+				<cocoa method="handleMoveCommand:"/>
+			</responds-to>
+            <responds-to command="clear compare">
+                <cocoa method="handleClearCompareVariantCommand:"/>
+            </responds-to>
+		</class>
+
+		<enumeration name="recipeFileFormat" code="CRff"> 
+			<enumerator name="JPEG" code="Rjpg"/> 
+			<enumerator name="JPEG_QuickProof" code="Rjqp"/> 
+			<enumerator name="JPEG_XR" code="Rjxr" hidden="yes"/>
+			<enumerator name="JPEG_2000" code="Rj2K" hidden="yes"/>
+			<enumerator name="TIFF" code="Rtif"/> 
+			<enumerator name="DNG" code="Rdng"/> 
+			<enumerator name="PNG" code="Rpng"/> 
+            <enumerator name="PSD" code="Rpsd"/>
+			<enumerator name="PSB" code="Rpsb"/>
+            <enumerator name="Affinity" code="Raff"/>
+            <enumerator name="Original" code="Rorg"/>
+		</enumeration>
+
+		<enumeration name="tiffCompress" code="CRtc"> 
+			<enumerator name="Uncompressed" code="Rtno"/>
+			<enumerator name="LZW" code="Rtlz"/> 
+			<enumerator name="ZIP" code="Rtzp"/> 
+		</enumeration> 
+
+		<enumeration name="scalingType" code="CRst"> 
+			<enumerator name="Fixed" code="Rsfx"/> 
+			<enumerator name="Width_Scaling" code="Rswd"/>
+			<enumerator name="Height_Scaling" code="Rsht"/>
+			<enumerator name="BoundingDimensions" code="Rsdm"/> 
+			<enumerator name="Width_by_Height" code="Rswh"/> 
+			<enumerator name="Long_Edge" code="Rsle"/> 
+			<enumerator name="Short_Edge" code="Rsse"/> 
+		</enumeration> 
+
+		<enumeration name="measurementUnit" code="Cuni"> 
+			<enumerator name="pixels" code="MUpx"/>
+			<enumerator name="inches" code="MUin"/>
+			<enumerator name="millimeters" code="MUmm"/>
+			<enumerator name="centimeters" code="MUcm"/>
+			<enumerator name="percent" code="MUpr"/> 
+		</enumeration> 
+
+		<enumeration name="recipeRootType" code="Crrt"> 
+			<enumerator name="output location" code="Rrof"/>
+			<enumerator name="image folder" code="Rrif"/>
+			<enumerator name="custom location" code="Rrcu"/>
+		</enumeration> 
+
+        <enumeration name="export crop method" code="Cxce">
+			<enumerator name="respect" code="Rxcd"/>
+			<enumerator name="ignore" code="Rxci"/>
+			<enumerator name="crop to path" code="Rxcp"/>
+		</enumeration> 
+
+        <enumeration name="sharpening type" code="Crse">
+			<enumerator name="no output sharpening" code="Rsno"/>
+			<enumerator name="for screen" code="Rssc"/>
+			<enumerator name="for print" code="Rspr"/>
+			<enumerator name="disable all" code="Rsda"/>
+		</enumeration>
+
+        <enumeration name="distance type" code="Crde">
+			<enumerator name="percent of diagonal" code="Rdpd"/>
+			<enumerator name="inches" code="Rdin"/>
+			<enumerator name="centimeters" code="Rdcm"/>
+		</enumeration>
+
+        <enumeration name="existing files behavior" code="Crex">
+            <enumerator name="add suffix" code="Rxsu"/>
+            <enumerator name="overwrite" code="Rxow"/>
+            <enumerator name="skip" code="Rxsk"/>
+        </enumeration>
+        
+		<class name="recipe" code="COrp" description="A Capture One process recipe.">
+			<cocoa class="RecipeAppleScript"/>
+			<property name="name" code="pnam" type="text" access="rw" description="The name of the recipe."/>
+			<property name="enabled" code="CRen" type="boolean" access="rw" description="Whether or not the recipe is enabled."/>
+			<property name="output format" code="CRft" type="recipeFileFormat" access="rw" description="The output file format of the recipe.">
+				<cocoa key="fileFormat"/>
+			</property>
+			<property name="bits" code="CRbt" access="rw" description="The bit depth of the output file." type="integer"/>
+			<property name="JPEG quality" code="CRjq" access="rw" description="The JPEG quality of the output file." type="integer">
+				<cocoa key="jpegQuality"/>
+			</property>
+			<property name="TIFF compression" code="CRtf" type="tiffCompress" access="rw" description="The TIFF compression type of the output file.">
+				<cocoa key="tiffCompression"/>
+			</property>
+			<property name="TIFF thumbnail" code="CRth" type="boolean" access="rw" description="Whether or not the output TIFF should have a thumbnail.">
+				<cocoa key="tiffThumbnail"/>
+			</property>
+			<property name="TIFF tile dimension" code="CRtd" type="integer" access="rw" description="Valid values are 0 (no tiling), 128, 256, 512, 1024, or 2048.">
+				<cocoa key="tiffTileDimension"/>
+			</property>
+			<property name="color profile" code="CRcp" type="text" access="rw" description="The name of the ICC color profile to be applied.">
+				<cocoa key="profileName"/>
+			</property>
+			<property name="pixels per inch" code="CRrs" access="rw" description="The resolution of the output file." type="number">
+				<cocoa key="resolution"/>
+			</property>
+			<property name="scaling method" code="CSmt" type="scalingType" description="The scaling method for the output file."/>
+			<property name="scaling unit" code="CSut" type="measurementUnit" description="The scaling units used by current scaling method.">
+				<cocoa key="scalingUnits"/>
+			</property>
+			<property name="primary scaling value" code="CSv1" access="rw" type="number" description="Primary value used by current scaling method.">
+				<cocoa key="scaleValueOne"/>
+			</property>
+			<property name="secondary scaling value" code="CSv2" access="rw" type="number" description="Secondary value used by current scaling method (BoundingDimensions and Width_by_Height methods only).">
+				<cocoa key="scaleValueTwo"/>
+			</property>
+			<property name="upscale" code="CSus" type="boolean" access="rw" description="Whether or not output can be upscaled beyond the original size."/>
+            
+            <property name="packed" code="ipck" type="boolean" description="If exported images should be packed into EIP files.">
+                <cocoa key="exportAsEIP"/>
+            </property>
+            <property name="include adjustments" code="Ceia" type="boolean" description="If image adjustments should be also exported."/>
+			<property name="app" code="CRap" access="rw" description="Output file's 'Open With' application.">
+				<cocoa key="openWithLocation"/>
+                <type type="text"/>
+                <type type="file"/>
+			</property>
+			<property name="root folder type" code="CRro" type="recipeRootType" description="The recipe's type of root folder."/>
+			<property name="root folder location" code="CRrf" type="file" access="rw" description="The output root folder location.">
+				<cocoa key="rootFolderURL"/>
+			</property>
+            <property name="output name format" code="COOF" type="text" access="rw" description="The output name format of the recipe, with tokens in brackets e.g. [Rating].">
+                <cocoa key="outputFileName"/>
+            </property>
+			<property name="output sub name" hidden="yes" code="CRsn" type="text" access="rw" description="The output sub name, with tokens in brackets e.g. [Rating]."/>
+			<property name="output sub folder" code="CRsf" type="text" access="rw" description="The output sub folder, with tokens in brackets e.g. [Rating]."/>
+            <property name="existing files" code="CRef" type="existing files behavior" access="rw" description="What to do when a file already exists at the output path."/>
+            <property name="thumbnails" hidden="yes" code="CRct" type="boolean" access="rw" description="Whether or not thumbnails should be created.">
+				<cocoa key="createThumbnails"/>
+			</property>
+            <property name="sharpening" code="CRst" type="sharpening type" access="rw" description="The type of sharpening applied to output."/>
+            <property name="sharpening amount" code="Crsa" type="real" access="rw"/>
+            <property name="sharpening radius" code="Crss" type="real" access="rw" description="Only applies to type 'for screen'."/>
+            <property name="sharpening threshold" code="Crsr" type="real" access="rw"/>
+            <property name="sharpening distance" code="Crsd" type="real" access="rw" description="Only applies to type 'for print'."/>
+            <property name="sharpening distance type" code="Crsy" type="distance type" access="rw" description="Only applies to type 'for print'."/>
+			<property name="ignore crop" code="CRic" type="boolean" access="rw" description="Whether or not the default crop should be used in place of the current crop." hidden="yes"/>
+			<property name="export crop method" code="CRxc" type="export crop method" access="rw" description="How the crop should be used during output."/>
+            <property name="include keywords" code="CRkw" access="rw" description="The names of keyword libraries to include, or 'All'.">
+				<type type="text" list="yes"/>
+            </property>
+			<property name="include ratings" code="CRrc" type="boolean" access="rw" description="Whether or not rating and color tags should be included.">
+				<cocoa key="includeRatingMetadata"/>
+			</property>
+			<property name="include copyright" code="CRco" type="boolean" access="rw" description="Whether or not copyright metadata should be included.">
+				<cocoa key="includeCopyrightMetadata"/>
+			</property>
+			<property name="include GPS" code="CRgp" type="boolean" access="rw" description="Whether or not GPS metadata should be included.">
+				<cocoa key="includeGPSCoordinateMetadata"/>
+			</property>
+			<property name="include Camera Metadata" code="CRca" type="boolean" access="rw" description="Whether or not camera metadata should be included."/>
+			<property name="include Other Metadata" code="CRom" type="boolean" access="rw" description="Whether or not other metadata should be included.">
+				<cocoa key="includeAllOtherMetadata"/>
+			</property>
+			<property name="include annotations" code="CRan" type="boolean" access="rw" description="Whether or not annotations should be included."/>
+            <property name="include overlay" code="CRov" type="boolean" access="rw" description="Whether or not the overlay should be included."/>
+            <property name="include guides" code="CRgd" type="boolean" access="rw" description="(Studio Only) Whether or not the guides should be included."/>
+			<property name="watermark" code="CRwm" type="watermark" access="rw" description="The watermark of the recipe."/>
+		</class>
+		
+		<enumeration name="watermarkKind" code="CRWa"> 
+			<enumerator name="Textual" code="CRWt"/> 
+			<enumerator name="Imagery" code="CRWi"/> 
+			<enumerator name="None" code="CRWn"/> 
+		</enumeration> 
+
+		<class name="watermark" code="CRwm" description="A recipe watermark.  Properties are specific to the kind of watermark, so ensure that the kind is what you want before accessing a watermark's properties.">
+			<cocoa class="WatermarkAppleScript"/>
+			<property name="kind" code="COdk" type="watermarkKind" access="rw" description="The kind of watermark.">
+				<cocoa key="watermarkType"/>
+			</property>
+			<property name="image" code="CRwg" type="text" access="rw" description="The image path."/>
+			<property name="label" code="CRws" type="text" access="rw" description="The text, with tokens in brackets e.g. [Rating]."/>
+			<property name="color" code="colr" type="RGB color" access="rw" description="The text color."/>
+			<property name="size" code="CRwz" type="integer" access="rw" description="The text size in points."/>
+			<property name="font" code="CRwf" type="text" access="rw" description="The text font name."/>
+			<property name="opacity" code="CRwo" type="integer" access="rw" description="The opacity (1 to 100)."/>
+			<property name="scale" code="CRwl" type="integer" access="rw" description="The scale (25 to 400)."/>
+			<property name="x" code="CRwx" type="number" access="rw" description="The horizontal position (-55 to 55)."/>
+			<property name="y" code="CRwy" type="number" access="rw" description="The vertical position (-55 to 55)."/>
+		</class>
+
+		<class name="job" code="CQjb" description="A pending job from a Capture One document's batch processing queue.">
+			<cocoa class="BatchJobAppleScript"/>
+            <property name="id" code="ID  " type="text" access="r" description="The unique identifier of the job.">
+                <cocoa key="uuid"/>
+            </property>
+			<property name="image name" code="CQjn" type="text" access="r" description="The filename of the original image to be processed.">
+				<cocoa key="imageFileName"/>
+			</property>
+			<property name="image path" code="CQjp" type="text" access="r" description="The full path to the original image to be processed.">
+				<cocoa key="rawPath"/>
+			</property>
+			<element type="recipe">
+				<cocoa key="scriptRecipes"/>
+			</element>			
+		</class>
+        
+        <class name="keyword library" code="Ckwl" plural="keyword libraries">
+            <cocoa class="KeywordLibraryAppleScript"/>
+            <element type="keyword"/>
+            <property name="id" code="ID  " type="text" access="r">
+                <cocoa key="uuid"/>
+            </property>
+            <property name="name" code="pnam" access="r" type="text"/>
+            <responds-to command="import">
+                <cocoa method="handleImportCommand:"/>
+            </responds-to>
+        </class>
+        
+		<class name="keyword" code="ckyw">
+			<cocoa class="KeywordAppleScript"/>
+            <property name="id" code="ID  " type="text" access="r" description="The unique identifier of the keyword.">
+                <cocoa key="uuid"/>
+            </property>
+			<property name="name" code="pnam" access="r" type="text"/>
+			<property name="parent" code="kwpa" access="r" type="text"/>
+            <responds-to command="apply keyword">
+                <cocoa method="handleApplyCommand:"/>
+            </responds-to>
+		</class>
+
+        <class name="user crop aspect ratio" code="cuca">
+            <cocoa class="UserCropAspectRatioAppleScript"/>
+            <property name="name" code="pnam" access="r" type="text"/>
+            <property name="ratio" code="ucra" access="r" type="real" description="Equivalent to width / height, e.g. a 16:9 ratio = 16.0/9.0"/>
+        </class>
+
+        <class name="readout" code="Crdo" description="A viewer color readout. Color property values and availability are dependent upon the current output recipe profile and Lab color mode. Inappropriate properties will return 'missing value'.">
+            <cocoa class="ReadoutAppleScript"/>
+            <property name="horizontal position" code="CRhz" type="real" access="r" description="The horizontal position (must be greater than 0 and less than 100)."/>
+            <property name="vertical position" code="CRvt" type="real" access="r" description="The vertical position (must be greater than 0 and less than 100)."/>
+            <property name="red" code="CRrd" type="integer" access="r"/>
+            <property name="green" code="CRgn" type="integer" access="r"/>
+            <property name="blue" code="CRbl" type="integer" access="r"/>
+            <property name="lightness" code="CRlt" type="integer" access="r"/>
+            <property name="cyan" code="CRcy" type="integer" access="r"/>
+            <property name="magenta" code="CRma" type="integer" access="r"/>
+            <property name="yellow" code="CRyl" type="integer" access="r"/>
+            <property name="black" code="CRbk" type="integer" access="r"/>
+            <property name="gray" code="CRgy" type="integer" access="r"/>
+            <property name="Lab L" code="CRlL" type="real" access="r" description="Lab lightness">
+                <cocoa key="labL"/>
+            </property>
+            <property name="Lab a" code="CRlA" type="real" access="r" description="Lab red to green">
+                <cocoa key="labA"/>
+            </property>
+            <property name="Lab b" code="CRlB" type="real" access="r" description="Lab blue to yellow">
+                <cocoa key="labB"/>
+            </property>
+        </class>
+
+		<enumeration name="layer type" code="CLty">
+			<enumerator name="adjustment" code="CLnm"/>
+			<enumerator name="clone" code="CLcl"/>
+			<enumerator name="heal" code="CLhl"/>
+            <enumerator name="filled" code="CLfl"/>
+			<enumerator name="subject mask" code="CLsm" description="AI-generated subject mask."/>
+			<enumerator name="background mask" code="CLbm" description="AI-generated background mask."/>
+            <enumerator name="background" code="CLbg" description="The base 'Image' layer"/>
+		</enumeration>
+
+		<class name="layer" code="clyr" description="A variant adjustments layer.  Note that for backward compatibility reasons, an Image Layer's name and kind are 'background'.">
+			<cocoa class="LayerAppleScript"/>
+			<property name="name" code="pnam" type="text"/>
+			<property name="kind" code="COdk" access="r" type="layer type"/>
+            <property name="enabled" code="CRen" type="boolean"/>
+            <property name="opacity" code="CRwo" type="integer" description="The opacity (1 to 100)."/>
+            <property name="adjustments" code="vset" type="adjustment settings" description="The layer's adjustment settings."/>
+            <property name="luma range" code="LuRa" type="luma range settings" description="The layer mask's luma range settings."/>
+            <responds-to command="clear mask">
+                <cocoa method="handleClearMaskCommand:"/>
+            </responds-to>
+            <responds-to command="invert mask">
+                <cocoa method="handleInvertMaskCommand:"/>
+            </responds-to>
+            <responds-to command="fill mask">
+                <cocoa method="handleFillMaskCommand:"/>
+            </responds-to>
+            <responds-to command="rasterize mask">
+                <cocoa method="handleRasterizeMaskCommand:"/>
+            </responds-to>
+            <responds-to command="feather mask">
+                <cocoa method="handleFeatherMaskCommand:"/>
+            </responds-to>
+            <responds-to command="refine mask">
+                <cocoa method="handleRefineMaskCommand:"/>
+            </responds-to>
+            <responds-to command="copy mask">
+                <cocoa method="handleCopyMaskCommand:"/>
+            </responds-to>
+            <responds-to command="apply style">
+                <cocoa method="handleApplyStyleCommand:"/>
+            </responds-to>
+            <responds-to command="clear luma range">
+                <cocoa method="handleClearLumaCommand:"/>
+            </responds-to>
+		</class>
+
+        <class name="luma range settings" code="LRSt">
+            <cocoa class="LumaRangeAppleScript"/>
+            <property name="range low" type="real" code="LRrl"/>
+            <property name="range high" type="real" code="LRrh"/>
+            <property name="falloff low" type="real" code="LRfl"/>
+            <property name="falloff high" type="real" code="LRfh"/>
+            <property name="invert" type="boolean" code="LRnv"/>
+            <property name="radius" type="real" code="LRra"/>
+            <property name="sensitivity" type="real" code="LRsn"/>
+        </class>
+
+        <enumeration name="crop aspect ratio orientation" code="CVoe">
+            <enumerator name="landscape" code="CVol"/>
+            <enumerator name="portrait" code="CVop"/>
+            <enumerator name="square" code="CVos"/>
+        </enumeration>
+
+        <enumeration name="technical processing mode" code="Ctpm">
+            <enumerator name="photography" code="Pmph"/>
+            <enumerator name="film negative" code="Pmfm"/>
+            <enumerator name="repro negative" code="Pmrn"/>
+            <enumerator name="repro positive" code="Pmrp"/>
+        </enumeration>
+
+		<class name="variant" code="cvar" description="An Image Variant.">
+			<cocoa class="VariantAppleScript"/>
+			<element type="keyword"/>
+			<element type="layer"/>
+            <element type="readout"/>
+            <element type="output event"/>
+			<property name="name" code="pnam" type="text" access="r" description="The name of the parent image"/>
+			<property name="id" code="ID  " type="text" access="r" description="The unique identifier of the variant">
+				<cocoa key="uuid"/>
+			</property>
+			<property name="parent image" code="vpar" description="The parent image of the variant" type="image" access="r"/>
+            <property name="file" code="COfl" type="file" description="The file of the original RAW file of this variant" access="r" hidden="yes"/>
+            <property name="current layer" code="cula" description="The currently selected layer." type="layer"/>
+            <property name="pick" code="vpck" description="Is this the picked variant" type="boolean"/>
+            <property name="position" code="Cdps" description="The index of this variant relative to all of the parent image's variants, e.g. the 'picked' is the variant at first position." type="integer" access="r"/>
+            <property name="selected" code="vsel" description="Is this variant selected in the collection containing it." type="boolean" access="r"/>
+            <property name="visible" code="pvis" description="Is this variant among the filtered variants visible in the parent document's current collection." type="boolean" access="r"/>
+            <property name="queued" code="vapq" type="boolean" access="r" description="Is this variant currently queued for processing."/>
+            <property name="processing mode" code="vtpm" type="technical processing mode" description="Corresponds to Mode in Base Characteristics."/>
+            <property name="engine" code="CVnj" description="The processing engine version in use for this variant.  Generally corresponds to the version of Capture One under which the image was originally edited, multiplied by 100." type="integer" access="r"/>
+            <property name="adjustments" code="vset" type="adjustment settings" description="The variant's Image Layer adjustment settings."/>
+			<property name="styles" code="vsty" description="The name(s) of styles and/or presets that have been applied to this variant's Image Layer.">
+				<type type="text" list="yes"/>
+			</property>
+            <property name="exposure meter" code="vexe" type="real" access="r" description="Center-weighted measure of exposure in the original capture, denoted on a ±2 EV scale."/>
+			<property name="color tag" code="vctg" type="integer"/>
+			<property name="rating" code="vcrt" type="integer"/>
+			<property name="contact creator" code="vicc" type="text"/>
+			<property name="contact creator job title" code="vicj" type="text"/>
+			<property name="contact address" code="vica" type="text"/>
+			<property name="contact city" code="vict" type="text"/>
+			<property name="contact state" code="vics" type="text"/>
+			<property name="contact postal code" code="vicp" type="text"/>
+			<property name="contact country" code="vicy" type="text"/>
+			<property name="contact phone" code="vich" type="text"/>
+			<property name="contact email" code="vice" type="text"/>
+			<property name="contact website" code="vicw" type="text"/>
+			<property name="content headline" code="vith" type="text"/>
+			<property name="content description" code="vitd" type="text"/>
+			<property name="content category" code="vitc" type="text"/>
+			<property name="content supplemental categories" code="vitg" type="text"/>
+			<property name="content subject codes" code="vits" type="text"/>
+			<property name="content description writer" code="vitw" type="text"/>
+			<property name="image intellectual genre" code="viig" type="text"/>
+			<property name="image scenes" code="viis" type="text"/>
+			<property name="image location" code="viil" type="text"/>
+			<property name="image city" code="viic" type="text"/>
+			<property name="image state" code="viip" type="text"/>
+			<property name="image country" code="viiy" type="text"/>
+			<property name="image country code" code="viid" type="text"/>
+			<property name="status title" code="vist" type="text"/>
+			<property name="status job identifier" code="visj" type="text"/>
+			<property name="status instructions" code="visi" type="text"/>
+			<property name="status provider" code="visp" type="text"/>
+			<property name="status source" code="viss" type="text"/>
+			<property name="status copyright notice" code="visc" type="text"/>
+			<property name="status rights usage terms" code="visr" type="text"/>
+			<property name="Getty personalities" code="vigp" type="text"/>
+			<property name="Getty original filename" code="vigf" type="text"/>
+			<property name="Getty parent MEID" code="vigm" type="text">
+				<cocoa key="GettyParentMEID"/>
+			</property>
+            <property name="latitude" code="Glat" type="real" access="r"/>
+            <property name="longitude" code="Glng" type="real" access="r"/>
+            <property name="altitude" code="Galt" type="real" access="r"/>
+            <property name="lens correction" code="vlns" type="lens correction settings"/>
+            <property name="applied LCC name" code="vlcc" access="r" type="text" description="The name of the image used to create the lens cast correction applied to this variant.">
+                <cocoa key="appliedLCCName"/>
+            </property>
+            <property name="LCC color cast" code="vlco" type="boolean" description="Does the variant use lens cast correction to improve color cast."/>
+            <property name="LCC dust removal" code="vlcd" type="boolean" description="Does the variant use lens cast correction to remove dust."/>
+            <property name="LCC uniform light" code="vlcu" type="boolean" description="Does the variant use lens cast correction to improve light uniformity."/>
+            <property name="LCC uniform light amount" code="vlcp" type="integer" description="The percentage of light uniformity improvement from lens cast correction."/>
+			<property name="crop" code="vcrp" description="The variant&apos;s crop rectangle {centerX, centerY, width, height}" type="rectangle">
+				<cocoa key="cropAsQDRect"/>
+			</property>
+            <property name="available crop aspect ratios" code="vcav" access="r">
+                <type type="text" list="yes"/>
+            </property>
+            <property name="crop aspect ratio" code="vcar" type="text"/>
+            <property name="crop orientation" code="vcor" type="crop aspect ratio orientation"/>
+			<property name="crop size" code="vcrS" description="The size of the crop in pixels {width, height}" type="point">
+				<cocoa key="cropSizeAsQDPoint"/>
+			</property>
+			<property name="crop width" code="vcrW" description="The width (in pixels) of the variant&apos;s crop" type="integer"/>
+			<property name="crop height" code="vcrH" description="The height (in pixels) of the variant&apos;s crop" type="integer"/>
+			<property name="crop center" code="vcrC" description="The center of the crop in pixels {x, y} Bottom Left is the origin" type="point">
+				<cocoa key="cropCenterAsQDPoint"/>
+			</property>
+			<property name="crop centerX" code="vcrX" description="The horizontal center (in pixels) of the variant&apos;s crop (relative to Left edge)" type="integer">
+				<cocoa key="cropCenterX"/>
+			</property>
+			<property name="crop centerY" code="vcrY" description="The vertical center (in pixels) of the variant&apos;s crop (relative to bottom edge)" type="integer">
+				<cocoa key="cropCenterY"/>
+			</property>
+            <property name="crop outside image" code="vcrK" description="Is crop outside image enabled." type="boolean"/>
+			<responds-to command="process">
+				<cocoa method=""/>
+			</responds-to>
+			<responds-to command="autocrop">
+				<cocoa method=""/>
+			</responds-to>
+			<responds-to command="clone variant">
+				<cocoa method="handleCloneCommand:"/>
+			</responds-to>
+			<responds-to command="reload metadata">
+				<cocoa method="handleReloadCommand:"/>
+			</responds-to>
+			<responds-to command="sync metadata">
+				<cocoa method="handleSyncCommand:"/>
+			</responds-to>
+			<responds-to command="copy adjustments">
+				<cocoa method="handleCopyAdjustmentsCommand:"/>
+			</responds-to>
+			<responds-to command="apply adjustments">
+				<cocoa method="handleApplyAdjustmentsCommand:"/>
+			</responds-to>
+            <responds-to command="reset adjustments">
+                <cocoa method="handleResetCommand:"/>
+            </responds-to>
+            <responds-to command="pick normalize">
+                <cocoa method="handleNormalizePickCommand:"/>
+            </responds-to>
+            <responds-to command="apply normalize">
+                <cocoa method="handleNormalizeApplyCommand:"/>
+            </responds-to>
+            <responds-to command="upgrade engine">
+                <cocoa method="handleUpgradeEngineCommand:"/>
+            </responds-to>
+            <responds-to command="autoadjust">
+                <cocoa method="handleAutoCommand:"/>
+            </responds-to>
+			<responds-to command="promote">
+				<cocoa method="handlePromoteCommand:"/>
+			</responds-to>
+			<responds-to command="demote">
+				<cocoa method="handleDemoteCommand:"/>
+			</responds-to>
+			<responds-to command="create LCC">
+				<cocoa method="handleCreateLCCCommand:"/>
+			</responds-to>
+			<responds-to command="apply LCC">
+				<cocoa method="handleApplyLCCCommand:"/>
+			</responds-to>
+            <responds-to command="maximum crop">
+                <cocoa method="handleMaxCropCommand:"/>
+            </responds-to>
+            <responds-to command="rotate left">
+                <cocoa method="handleRotateLeftCommand:"/>
+            </responds-to>
+            <responds-to command="rotate right">
+                <cocoa method="handleRotateRightCommand:"/>
+            </responds-to>
+            <responds-to command="create people mask">
+                <cocoa method="handleCreatePeopleMaskCommand:"/>
+            </responds-to>
+            <responds-to command="show">
+                <cocoa method="handleShowOnLiveForStudioCommand:"/>
+            </responds-to>
+		</class>
+
+        <class name="lens correction settings" code="Clco" description="Settings used to correct for lens distortion.">
+            <cocoa class="LensCorrectionAppleScript"/>
+            <property name="lens profile" code="Clpf" type="text" description="The name of the current lens correction profile."/>
+            <property name="chromatic aberration" code="CLCc" type="boolean" description="Is chromatic aberration being corrected."/>
+            <property name="custom chromatic aberration" code="CLCa" type="boolean" description="Is this image's data being used to improve chromatic correction."/>
+            <property name="diffraction correction" code="CLCd" type="boolean" description="Is diffraction being corrected."/>
+            <property name="hide distorted areas" code="CLCh" type="boolean" description="Are distorted areas being hidden."/>
+            <property name="distortion" code="CLdv" type="real" description="The amount of distortion correction being applied."/>
+            <property name="sharpness falloff" code="CLsv" type="real" description="The amount of sharpness compensation being applied."/>
+            <property name="light falloff" code="CLlv" type="real" description="The amount of vignetting compensation being applied."/>
+            <property name="focal length" code="CLmf" type="integer"/>
+            <property name="aperture" code="CCat" type="real"/>
+            <property name="tilt" code="CLti" type="real"/>
+            <property name="tilt direction" code="CLtd" type="real"/>
+            <property name="shift" code="CLsh" type="real"/>
+            <property name="shift direction" code="CLsd" type="real"/>
+            <property name="shift x" code="CLmh" type="integer"/>
+            <property name="shift y" code="CLmv" type="integer"/>
+            <responds-to command="reset">
+                <cocoa method="handleResetItemCommand:"/>
+            </responds-to>
+        </class>
+        
+        <class name="curve" code="Cacv" description="A collection of points affecting the exposure gradient of an image.">
+            <cocoa class="CurveAppleScript"/>
+            <element type="curve point"/>
+        </class>
+        
+        <class name="curve point" code="Cpcv" description="A curve level adjustment point.">
+            <cocoa class="CurvePointAppleScript"/>
+            <property name="brightness" code="CVbr" type="real" description="Corresponds to the horizontal position of the point in the UI (0 to 100, from shadow on the left to highlight on the right)."/>
+            <property name="amount" code="COfa" type="real" description="Corresponds to the vertical position of the point in the UI (0 to 100)."/>
+        </class>
+        
+		<enumeration name="flip type" code="Cfle">
+			<enumerator name="none" code="Cfln"/>
+			<enumerator name="horizontal" code="Cflh"/>
+			<enumerator name="vertical" code="Cflv"/>
+		</enumeration>
+
+		<enumeration name="clarity method" code="Ccle">
+			<enumerator name="natural" code="Ccln"/>
+			<enumerator name="punch" code="Cclp"/>
+			<enumerator name="neutral" code="Cclt"/>
+			<enumerator name="classic" code="Cclc"/>
+		</enumeration> 
+
+		<enumeration name="grain type" code="Cgte">
+			<enumerator name="fine" code="Cgtf"/>
+			<enumerator name="silver rich" code="Cgts"/>
+			<enumerator name="soft" code="Cgto"/>
+			<enumerator name="cubic" code="Cgtc"/>
+			<enumerator name="tabular" code="Cgtt"/>
+			<enumerator name="harsh" code="Cgth"/>
+		</enumeration>
+
+        <enumeration name="vignette method" code="Cvme">
+            <enumerator name="elliptic on crop" code="Cvml"/>
+            <enumerator name="circular on crop" code="CvmO"/>
+            <enumerator name="circular" code="Cvmc"/>
+        </enumeration>
+        
+        <class name="adjustment settings" code="CVas" description="Settings that adjust the appearance of a variant.">
+            <cocoa class="VariantAdjustmentsAppleScript"/>
+            <property name="orientation" type="integer" code="CVor"/>
+            <property name="rotation" type="real" code="CVro"/>
+            <property name="flip" type="flip type" code="CVfl"/>
+            <property name="keystone amount" type="integer" code="CKam"/>
+            <property name="keystone vertical" type="real" code="CKve"/>
+            <property name="keystone horizontal" type="real" code="CKho"/>
+            <property name="keystone skew" type="real" code="CKsk"/>
+            <property name="keystone aspect" type="real" code="CKas"/>
+            <property name="color profile" type="text" code="CRcp"/>
+            <property name="film curve" type="text" code="CVfc"/>
+            <property name="white balance preset" type="text" code="CVwb"/>
+            <property name="temperature" type="real" code="CVwk"/>
+            <property name="tint" type="real" code="CVwt"/>
+            <property name="exposure" type="real" code="CVex"/>
+            <property name="brightness" type="real" code="CVbr"/>
+            <property name="contrast" type="real" code="CVco"/>
+            <property name="saturation" type="real" code="CVsa"/>
+            <property name="color balance master hue" type="real" code="CBMh"/>
+            <property name="color balance master saturation" type="real" code="CBMs"/>
+            <property name="color balance shadow hue" type="real" code="CBsh"/>
+            <property name="color balance shadow saturation" type="real" code="CBss"/>
+            <property name="color balance shadow lightness" type="real" code="CBsl"/>
+            <property name="color balance midtone hue" type="real" code="CBmh"/>
+            <property name="color balance midtone saturation" type="real" code="CBms"/>
+            <property name="color balance midtone lightness" type="real" code="CBml"/>
+            <property name="color balance highlight hue" type="real" code="CBhh"/>
+            <property name="color balance highlight saturation" type="real" code="CBhs"/>
+            <property name="color balance highlight lightness" type="real" code="CBhl"/>
+            <property name="black and white" type="boolean" code="CBWt"/>
+            <property name="black and white red sensitivity" type="integer" code="CBWr"/>
+            <property name="black and white yellow sensitivity" type="integer" code="CBWy"/>
+            <property name="black and white green sensitivity" type="integer" code="CBWg"/>
+            <property name="black and white cyan sensitivity" type="integer" code="CBWc"/>
+            <property name="black and white blue sensitivity" type="integer" code="CBWb"/>
+            <property name="black and white magenta sensitivity" type="integer" code="CBWm"/>
+            <property name="black and white split highlight hue" type="integer" code="CShh"/>
+            <property name="black and white split highlight saturation" type="integer" code="CShs"/>
+            <property name="black and white split shadow hue" type="integer" code="CSsh"/>
+            <property name="black and white split shadow saturation" type="integer" code="CSss"/>
+            <property name="color editor settings" type="color editor options" code="CCEs"/>
+            <property name="level highlight rgb" type="real" code="CVhn"/>
+            <property name="level shadow rgb" type="real" code="CVsn"/>
+            <property name="level highlight red" type="real" code="CVhr"/>
+            <property name="level shadow red" type="real" code="CVsr"/>
+            <property name="level highlight green" type="real" code="CVhg"/>
+            <property name="level shadow green" type="real" code="CVsg"/>
+            <property name="level highlight blue" type="real" code="CVhb"/>
+            <property name="level shadow blue" type="real" code="CVsb"/>
+            <property name="level target highlight rgb" type="real" code="CVth"/>
+            <property name="level target shadow rgb" type="real" code="CVts"/>
+            <property name="level target highlight red" type="real" code="CVTr"/>
+            <property name="level target shadow red" type="real" code="CVtr"/>
+            <property name="level target highlight green" type="real" code="CVTg"/>
+            <property name="level target shadow green" type="real" code="CVtg"/>
+            <property name="level target highlight blue" type="real" code="CVTb"/>
+            <property name="level target shadow blue" type="real" code="CVtb"/>
+            <property name="level midtone rgb" type="real" code="CVmn"/>
+            <property name="level midtone red" type="real" code="CVmr"/>
+            <property name="level midtone green" type="real" code="CVmg"/>
+            <property name="level midtone blue" type="real" code="CVmb"/>
+            <property name="rgb curve" type="curve" code="CVac"/>
+            <property name="luma curve" type="curve" code="CVlc"/>
+            <property name="red curve" type="curve" code="CVrc"/>
+            <property name="green curve" type="curve" code="CVgc"/>
+            <property name="blue curve" type="curve" code="CVbc"/>
+            <property name="highlight recovery" type="real" code="CVhi" hidden="yes"/>
+            <property name="highlight adjustment" type="real" code="CVha"/>
+            <property name="shadow recovery" type="real" code="CVsh"/>
+            <property name="white recovery" type="real" code="CVwh"/>
+            <property name="black recovery" type="real" code="CVbl"/>
+            <property name="clarity method" type="clarity method" code="CVcl"/>
+            <property name="clarity amount" type="real" code="CVde"/>
+            <property name="clarity structure" type="real" code="CVst"/>
+            <property name="dehaze amount" type="real" code="CVda"/>
+            <property name="dehaze color" type="RGB color" code="CVdc"/>
+            <property name="vignetting amount" type="real" code="CVvg"/>
+            <property name="vignetting method" type="vignette method" code="CVvm"/>
+            <property name="sharpening amount" type="real" code="Crsa"/>
+            <property name="sharpening radius" type="real" code="Crss"/>
+            <property name="sharpening threshold" type="real" code="Crsr"/>
+            <property name="sharpening halo suppression" type="real" code="CVhs"/>
+            <property name="noise reduction luminance" type="real" code="CVnl"/>
+            <property name="noise reduction details" type="integer" code="CVnd"/>
+            <property name="noise reduction color" type="real" code="CVnc"/>
+            <property name="noise reduction single pixel" type="real" code="CVns"/>
+            <property name="film grain type" type="grain type" code="CVft"/>
+            <property name="film grain impact" type="real" code="CVfi"/>
+            <property name="film grain granularity" type="real" code="CVfg"/>
+            <property name="moire amount" type="real" code="CVma"/>
+            <property name="moire pattern" type="integer" code="CVmp"/>
+            <responds-to command="pick dehaze">
+                <cocoa method="handleDehazePickCommand:"/>
+            </responds-to>
+            <responds-to command="recalculate dehaze">
+                <cocoa method="handleDehazeRecalculateCommand:"/>
+            </responds-to>
+        </class>
+
+        <class name="color editor options" code="CCEo" plural="color editor options" description="Encapsulates all settings available in the Color Editor tool. Skin Tone correction properties are not exposed to AppleScript.">
+            <cocoa class="ColorEditorAppleScript"/>
+            <element type="basic color correction"/>
+            <element type="advanced color correction"/>
+        </class>
+
+        <class name="basic color correction" code="CCba" description="A Basic color correction within the Color Editor.">
+            <cocoa class="ColorCorrectionBasicAppleScript"/>
+            <property name="name" code="pnam" type="text" access="r"/>
+            <property name="hue change" code="Chuc" type="real"/>
+            <property name="saturation change" code="Csac" type="real"/>
+            <property name="lightness change" code="Clic" type="real"/>
+        </class>
+
+        <class name="advanced color correction" code="CCad" description="An Advanced color correction within the Color Editor.">
+            <cocoa class="ColorCorrectionAdvancedAppleScript"/>
+            <property name="enabled" code="CRen" type="boolean"/>
+            <property name="red" code="CRrd" type="integer" description="The red component of the origin color."/>
+            <property name="green" code="CRgn" type="integer" description="The green component of the origin color."/>
+            <property name="blue" code="CRbl" type="integer" description="The blue component of the origin color."/>
+            <property name="hue start" code="Chus" type="real"/>
+            <property name="hue end" code="Chue" type="real"/>
+            <property name="saturation start" code="Csas" type="real"/>
+            <property name="saturation end" code="Csae" type="real"/>
+            <property name="smoothness" code="Csmo" type="real"/>
+            <property name="hue change" code="Chuc" type="real"/>
+            <property name="saturation change" code="Csac" type="real"/>
+            <property name="lightness change" code="Clic" type="real"/>
+        </class>
+            
+        <enumeration name="tool placement" code="CTpe">
+            <enumerator name="left" code="CElt"/>
+            <enumerator name="right" code="CErg"/>
+        </enumeration>
+
+        <class name="tools configuration" code="CtwO" description="Settings affecting the tools.">
+            <cocoa class="ToolSettingsAppleScript"/>
+            <property name="visible" code="pvis" type="boolean"/>
+            <property name="size" code="CRwz" type="integer"/>
+            <property name="auto hide" code="Chid" type="boolean"/>
+            <property name="placement" code="CBpl" type="tool placement"/>
+        </class>
+
+        <class name="viewer configuration" code="CvwO" description="Settings affecting a viewer. Some elements and properties are only relevant for the standalone Viewer.">
+            <cocoa class="ViewerSettingsAppleScript"/>
+            <element type="tool tab"/>
+            <element type="toolbar item"/>
+            <property name="viewer window" code="vWin" type="window" description="The associated window, if this is the standalone Viewer."/>
+            <property name="tool settings" code="COTl" type="tools configuration" description="Settings for the tools associated with this viewer."/>
+            <property name="visible" code="pvis" type="boolean"/>
+            <property name="zoom" code="COzm" type="integer"/>
+            <property name="multi view" code="CVmv" type="boolean"/>
+            <property name="proof margin" code="CVpm" type="boolean"/>
+            <property name="labels" code="CVlb" type="boolean"/>
+            <property name="window toolbar mode" code="CWtm" type="toolbarDisplayMode"/>
+            <property name="window toolbar" code="CVwT" type="boolean" hidden="yes"/>
+            <property name="viewer toolbar" code="CVvT" type="boolean"/>
+        </class>
+
+        <enumeration name="browser mode" code="CBme">
+            <enumerator name="grid" code="Cbeg"/>
+            <enumerator name="list" code="Cbel"/>
+            <enumerator name="filmstrip" code="Cbef"/>
+        </enumeration>
+
+        <enumeration name="browser placement" code="CBpe">
+            <enumerator name="left" code="CElt"/>
+            <enumerator name="right" code="CErg"/>
+            <enumerator name="bottom" code="CEbt"/>
+        </enumeration>
+
+        <enumeration name="browser label" code="CBle">
+            <enumerator name="off" code="Coff"/>
+            <enumerator name="edit" code="Cedt"/>
+            <enumerator name="status" code="Cstt"/>
+        </enumeration>
+
+        <class name="browser configuration" code="CbwO" description="Settings affecting a document's browser.">
+            <cocoa class="BrowserSettingsAppleScript"/>
+            <property name="visible" code="pvis" type="boolean"/>
+            <property name="size" code="CRwz" type="integer"/>
+            <property name="auto hide" code="Chid" type="boolean"/>
+            <property name="placement" code="CBpl" type="browser placement"/>
+            <property name="toolbar" code="COtb" type="boolean"/>
+            <property name="mode" code="Cmod" type="browser mode"/>
+            <property name="thumbnail zoom" code="CBts" type="integer"/>
+            <property name="label mode" code="CBla" type="browser label"/>
+        </class>
+
+		<enumeration name="import destination type" code="Cide">
+			<enumerator name="capture folder" code="Cicf"/>
+			<enumerator name="session folder" code="Cisf"/>
+			<enumerator name="selected folder" code="Cise"/>
+			<enumerator name="current location" code="Cicl"/>
+			<enumerator name="inside catalog" code="Ciic"/>
+			<enumerator name="custom" code="Cicu"/>
+		</enumeration> 
+
+		<enumeration name="import destination collection" code="Cice">
+			<enumerator name="recent" code="Cicr"/>
+			<enumerator name="capture collection" code="Cicc"/>
+			<enumerator name="selected album" code="Cica"/>
+		</enumeration> 
+
+		<enumeration name="import collection action" code="Ciae">
+			<enumerator name="no action" code="Cian"/>
+			<enumerator name="notify when done" code="Ciad"/>
+			<enumerator name="open collection" code="Cioc"/>
+		</enumeration> 
+
+		<class name="import options" code="CimO" description="Settings defining all aspects of the image import process for a document. Tell the document to import in order to use these settings.">
+			<cocoa class="ImportSettingsAppleScript"/>
+            <property name="include subfolders" code="Ciis" type="boolean"/>
+            <property name="exclude duplicates" code="Cixd" type="boolean"/>
+			<property name="destination type" code="Cidt" type="import destination type" description="All values other than 'custom' apply strictly to either sessions or catalogs only."/>
+			<property name="destination folder" code="Cidf" description="The import folder according to the current destination type. Can only be changed when the destination type is 'custom'.">
+				<type type="text"/>
+				<type type="file"/>
+			</property>
+			<property name="destination sub folder" code="Cins" type="text" description="Folder name with tokens in brackets e.g. [Rating].  Only applies to sessions."/>
+			<property name="destination collection" code="Cidc" type="import destination collection"/>
+			<property name="backup" code="Ciba" type="boolean"/>
+			<property name="backup folder" code="Cibf">
+				<type type="text"/>
+				<type type="file"/>
+			</property>
+			<property name="import naming format" code="Cinf" type="text" description="Name format with tokens in brackets e.g. [Rating].  Has no effect if the destination type is 'current location'."/>
+			<property name="import job name" code="Cijn" type="text" description="Has no effect if the destination type is 'current location'."/>
+            <property name="import counter" code="COic" type="integer" description="The counter used by appropriate naming format tokens.  The next item imported will be incremented from this."/>
+			<property name="import counter increment" code="Ciii" type="integer" description="The amount by which the import counter is incremented for every item imported."/>
+			<property name="import copyright" code="Cico" type="text"/>
+			<property name="import description" code="Cids" type="text"/>
+			<property name="apply styles" code="Cist" description="The name(s) of style adjustments to be applied to imported images.">
+				<type type="text" list="yes"/>
+			</property>
+			<property name="auto adjust" code="Ciaj" type="boolean"/>
+			<property name="include existing adjustments" code="Cixa" type="boolean"/>
+			<property name="import collection action" code="Ciia" type="import collection action"/>
+			<property name="eject card" code="Cijc" type="boolean"/>
+			<property name="erase after copy" code="Ciea" type="boolean"/>
+		</class>
+
+		<class name="export original options" code="CexO" description="Settings defining all aspects of exporting original images from a document. Tell the document to 'export originals' in order to use these settings.">
+			<cocoa class="ExportOriginalSettingsAppleScript"/>
+            <property name="destination folder" code="Cidf" description="The folder to export into.">
+				<type type="text"/>
+				<type type="file"/>
+			</property>
+			<property name="sub folder" code="Cesf" type="text" description="The sub folder, with tokens in brackets e.g. [Rating]."/>
+			<property name="naming method" code="Cenm" type="naming method"/>
+			<property name="naming format" code="Cenf" type="text" description="Text used for 'text and tokens' naming method, with tokens in brackets e.g. [Rating]."/>
+			<property name="job name" code="CBtj" type="text" description="Job name used for 'text and tokens' naming method."/>
+ 			<property name="export counter" code="Ceco" type="integer" description="Counter used for 'text and tokens' naming method."/>
+			<property name="export counter increment" code="Ceci" type="integer" description="Counter increment used for 'text and tokens' naming method."/>
+			<property name="find text" code="CBft" type="text" description="Text to be found for 'find and replace' naming method."/>
+			<property name="replacement text" code="CBrt" type="text" description="Text to replace the found text for 'find and replace' naming method."/>
+			<property name="packed" code="ipck" type="boolean" description="If exported images should be packed into Enhanced Image Package files."/>
+			<property name="include adjustments" code="Ceia" type="boolean" description="If image adjustments should be also exported."/>
+			<property name="include movies" code="Ceim" type="boolean" description="If movies should be also exported."/>
+			<property name="notify" code="Ceno" type="boolean" description="If a dialog notifying when the export has completed is desired."/>
+		</class>
+
+        <class name="output event" code="Voev" description="An output history event.">
+            <cocoa class="OutputEventAppleScript"/>
+            <property name="id" code="ID  " type="text" access="r" description="The unique identifier of the event.">
+                <cocoa key="uuid"/>
+            </property>
+            <property name="date" code="Cdat" type="date" access="r" description="The time of the output event."/>
+            <property name="file" code="COfl" type="file" access="r" description="The file object representing the resulting output at the time of the event."/>
+            <property name="path" code="ipth" type="text" access="r" description="The file path of the resulting output at the time of the event."/>
+            <property name="exists" code="Cxst" type="boolean" access="r" description="Whether or not the output file of this event currently exists."/>
+        </class>
+        
+		<class name="image" code="cimg" description="An image file." plural="images">
+			<cocoa class="ImageAppleScript"/>
+			<element type="variant"/>
+			<property name="path" code="ipth" description="The full path to the original image file." type="text" access="r">
+				<cocoa key="rawPath"/>
+			</property>
+            <property name="extension" code="COfe" type="text" description="The file's extension (file type), in uppercase." access="r"/>
+            <property name="file" code="COfl" type="file" description="The file of the original image file." access="r"/>
+            <property name="file size" code="COfs" type="integer" description="The image's file size." access="r"/>
+			<property name="name" code="pnam" description="The name of the image file." type="text" access="rw">
+				<cocoa key="name"/>
+			</property>
+			<property name="id" code="ID  " type="text" access="r" description="The unique identifier of the image.">
+				<cocoa key="uuid"/>
+			</property>
+			<property name="dimensions" code="idim" description="The dimensions of the image in pixels {width, height}." type="point" access="r">
+				<cocoa key="imageSizeAsQDPoint"/>
+			</property>
+            <property name="preliminary" code="ipre" type="boolean" access="r" description="Is this a low resolution preliminary capture still awaiting its full resolution data."/>
+            <property name="packed" code="ipck" type="boolean" access="r" description="Is this image in an Enhanced Image Package."/>
+			<property name="EXIF capture date" code="vxct" type="date" access="rw"/>
+			<property name="EXIF camera make" code="vxcm" type="text" access="r"/>
+			<property name="EXIF camera model" code="vxcd" type="text" access="r"/>
+			<property name="EXIF camera software" code="vxcs" type="text" access="r"/>
+			<property name="EXIF camera owner" code="vxco" type="text" access="r"/>
+			<property name="EXIF ISO" code="vxei" type="text" access="r">
+				<cocoa key="EXIFISO"/>
+			</property>
+			<property name="EXIF shutter speed" code="vxes" type="text" access="r"/>
+			<property name="EXIF aperture" code="vxea" type="text" access="r"/>
+			<property name="EXIF exposure compensation" code="vxec" type="text" access="r"/>
+			<property name="EXIF flash mode" code="vxef" type="text" access="r"/>
+			<property name="EXIF exposure program" code="vxep" type="text" access="r"/>
+			<property name="EXIF metering mode" code="vxem" type="text" access="r"/>
+			<property name="EXIF focal length" code="vxel" type="text" access="r"/>
+			<property name="EXIF white balance" code="vxew" type="text" access="r"/>
+			<property name="EXIF latitude" code="vxla" type="text" access="r"/>
+			<property name="EXIF longitude" code="vxlo" type="text" access="r"/>
+			<property name="EXIF altitude" code="vxal" type="text" access="r"/>
+			<responds-to command="add variant">
+				<cocoa method="doNewVariantCommand:"/>
+			</responds-to>
+			<responds-to command="pack">
+				<cocoa method="handlePackCommand:"/>
+			</responds-to>
+			<responds-to command="unpack">
+				<cocoa method="handleUnpackCommand:"/>
+			</responds-to>
+            <responds-to command="relink">
+                <cocoa method="handleRelinkCommand:"/>
+            </responds-to>
+        </class>
+
+		<enumeration name="naming method" code="Crme">
+			<enumerator name="text and tokens" code="Crtt"/>
+			<enumerator name="find and replace" code="Crfr"/>
+		</enumeration>
+
+		<class name="batch rename options" code="CbrO" description="Settings defining all aspects of the batch rename process.">
+			<cocoa class="BatchRenameSettingsAppleScript"/>
+			<property name="method" code="CBmt" type="naming method"/>
+			<property name="token format" code="CBtf" type="text" description="Text used for 'text and tokens' rename method, with tokens in brackets e.g. [Rating]"/>
+			<property name="job name" code="CBtj" type="text" description="Job name used for 'text and tokens' rename method."/>
+			<property name="counter" code="CBcc" type="integer" description="Counter used for 'text and tokens' rename method."/>
+			<property name="counter increment" code="CBci" type="integer" description="Counter increment used for 'text and tokens' rename method."/>
+			<property name="find text" code="CBft" type="text" description="Text to be found for 'find and replace' rename method."/>
+			<property name="replacement text" code="CBrt" type="text" description="Text to replace the found text for 'find and replace' rename method."/>
+			<property name="include file extension" code="CBfe" type="boolean"/>
+			<property name="pair RAWs and JPGs" code="CBrj" type="boolean">
+				<cocoa key="pairRAWsAndJPGs"/>
+			</property>
+		</class>
+
+		<enumeration name="adjustments source" code="CNmt">
+			<enumerator name="default" code="CNmd"/>
+			<enumerator name="copy from last" code="CNcl"/>
+			<enumerator name="copy from primary" code="CNcp"/>
+			<enumerator name="copy from clipboard" code="CNcc"/>
+			<enumerator name="copy specific from last" code="CNsl"/>
+			<enumerator name="copy specific from primary" code="CNsp"/>
+			<enumerator name="copy variants from last" code="CNvl"/>
+            <enumerator name="copy variants from primary" code="CNvp"/>
+            <enumerator name="document values" code="CNdv"/>
+		</enumeration>
+
+		<class name="next capture options" code="CncO" description="Settings affecting an image upon its capture in a tethered workflow.  All individual metadata properties and keywords here correspond to a 'capture metadata' mode of 'document values', which requires a Studio license.">
+			<cocoa class="NextCaptureSettingsAppleScript"/>
+            <element type="keyword"/>
+			<property name="capture profile" code="Nprf" type="text" description="The name of the profile to be applied.  May also be 'default', 'copy from last', or 'copy from primary'."/>
+			<property name="capture orientation" code="Nori" type="integer" description="The orientation in degrees to be applied. Can be 0, 90, 180, 270, or -1 for default."/>
+			<property name="capture metadata" code="Nmet" type="adjustments source" description="The source of metadata to be applied.  Studio exclusively uses 'document values' mode, which is unavailable to other license types."/>
+			<property name="other adjustments" code="Noth" type="adjustments source" description="The source of all other adjustments to be applied."/>
+			<property name="apply styles" code="Cist" description="The name(s) of style adjustments to be applied.">
+				<type type="text" list="yes"/>
+			</property>
+			<property name="auto alignment" code="Naut" type="boolean" description="Whether or not to auto rotate and keystone captured images."/>
+            <property name="contact creator" code="vicc" type="text"/>
+            <property name="contact creator job title" code="vicj" type="text"/>
+            <property name="contact address" code="vica" type="text"/>
+            <property name="contact city" code="vict" type="text"/>
+            <property name="contact state" code="vics" type="text"/>
+            <property name="contact postal code" code="vicp" type="text"/>
+            <property name="contact country" code="vicy" type="text"/>
+            <property name="contact phone" code="vich" type="text"/>
+            <property name="contact email" code="vice" type="text"/>
+            <property name="contact website" code="vicw" type="text"/>
+            <property name="content headline" code="vith" type="text"/>
+            <property name="content description" code="vitd" type="text"/>
+            <property name="content category" code="vitc" type="text"/>
+            <property name="content supplemental categories" code="vitg" type="text"/>
+            <property name="content subject codes" code="vits" type="text"/>
+            <property name="content description writer" code="vitw" type="text"/>
+            <property name="image intellectual genre" code="viig" type="text"/>
+            <property name="image scenes" code="viis" type="text"/>
+            <property name="image location" code="viil" type="text"/>
+            <property name="image city" code="viic" type="text"/>
+            <property name="image state" code="viip" type="text"/>
+            <property name="image country" code="viiy" type="text"/>
+            <property name="image country code" code="viid" type="text"/>
+            <property name="status title" code="vist" type="text"/>
+            <property name="status job identifier" code="visj" type="text"/>
+            <property name="status instructions" code="visi" type="text"/>
+            <property name="status provider" code="visp" type="text"/>
+            <property name="status source" code="viss" type="text"/>
+            <property name="status copyright notice" code="visc" type="text"/>
+            <property name="status rights usage terms" code="visr" type="text"/>
+            <property name="Getty personalities" code="vigp" type="text"/>
+            <property name="Getty original filename" code="vigf" type="text"/>
+            <property name="Getty parent MEID" code="vigm" type="text">
+                <cocoa key="GettyParentMEID"/>
+            </property>
+            <property name="backup" code="Ciba" type="boolean" description="(Studio Only) If the captured image should be backed up upon capture."/>
+            <property name="backup queue enabled" code="Nbqe" type="boolean" description="Whether or not the backup queue is running.  Can be changed."/>
+            <property name="backup destination" code="Nbfo" description="The location to which captured images should be backed up.">
+                <type type="text"/>
+                <type type="file"/>
+            </property>
+		</class>
+		
+        <class name="server options" code="Ccpo" description="Settings controlling the behavior of a document's Capture Pilot server. Some properties cannot be changed while a server is running.">
+            <cocoa class="ServerSettingsAppleScript"/>
+            <property name="name" code="pnam" type="text" access="rw"/>
+            <property name="served collection" code="CPsc" type="collection" access="rw" description="The 'folder' of images to be served."/>
+            <property name="password" code="CPpw" type="text" access="w"/>
+            <property name="address" code="CPad" type="text" access="r" description="The local IP address of the server."/>
+            <property name="mobile serving" code="CPmv" type="boolean" access="rw" description="Whether or not the mobile server is running."/>
+            <property name="mobile port" code="CPmp" type="integer" access="rw" description="The TCP port used for the mobile server. Set to 0 to use the default."/>
+            <property name="mobile rate" code="CPmr" type="boolean" access="rw"/>
+            <property name="mobile color tag" code="CPmt" type="boolean" access="rw"/>
+            <property name="mobile adjust" code="CPma" type="boolean" access="rw"/>
+            <property name="mobile capture" code="CPmc" type="boolean" access="rw"/>
+            <property name="web serving" code="CPwv" type="boolean" access="rw" description="Whether or not the web server is running. Note that starting the web server will require the entry of an administrator password in the Capture One user interface."/>
+            <property name="web port" code="CPwp" type="integer" access="rw" description="The TCP port used for the web server. Set to 0 to use the default."/>
+            <property name="web theme" code="CPth" type="text" access="rw"/>
+            <property name="web rate" code="CPwr" type="boolean" access="rw"/>
+            <property name="web color tag" code="CPwt" type="boolean" access="rw"/>
+        </class>
+
+        <class name="overlay options" code="COoo" description="Settings affecting the overlay image seen in the viewer.">
+            <cocoa class="OverlaySettingsAppleScript"/>
+            <property name="visible" code="pvis" type="boolean" access="rw" description="Whether or not the overlay is shown."/>
+            <property name="follow crop" code="Cfcp" type="boolean" access="rw" description="Whether or not the scale and position are relative to the crop."/>
+            <property name="image path" code="CQjp" type="text" access="rw" description="The path to the image file."/>
+            <property name="opacity" code="CRwo" type="integer" access="rw" description="The opacity (1 to 100)."/>
+            <property name="scale" code="CRwl" type="integer" access="rw" description="The scale (25 to 400)."/>
+            <property name="horizontal position" code="CRhz" type="real" access="rw" description="The horizontal position (-50 to 50)."/>
+            <property name="vertical position" code="CRvt" type="real" access="rw" description="The vertical position (-50 to 50)."/>
+            <responds-to command="reset">
+                <cocoa method="handleResetItemCommand:"/>
+            </responds-to>
+        </class>
+
+        <enumeration name="client viewer mode" code="COvm">
+            <enumerator name="pin" code="CVpi"/>
+            <enumerator name="selection" code="CVse"/>
+            <enumerator name="last capture" code="CVca"/>
+            <enumerator name="inactive" code="CVno"/>
+        </enumeration>
+
+        <class name="client viewer" code="COvo" description="Settings affecting a client viewer window (Studio only).">
+            <cocoa class="ClientViewerAppleScript"/>
+            <property name="name" code="pnam" type="text" access="r"/>
+            <property name="mode" code="Cmod" type="client viewer mode" access="rw"/>
+        </class>
+
+        <enumeration name="grid type" code="COgt">
+            <enumerator name="rectangular" code="CGre"/>
+            <enumerator name="golden ratio" code="CGgr"/>
+            <enumerator name="fibonacci spiral" code="CGfs"/>
+        </enumeration>
+        
+        <class name="grid options" code="COgo" description="Settings affecting the grid display in the viewer.">
+            <cocoa class="GridSettingsAppleScript"/>
+            <property name="visible" code="pvis" type="boolean" access="rw" description="Whether or not the grid is shown."/>
+            <property name="follow crop" code="Cfcp" type="boolean" access="rw" description="Whether or not the grid is relative to the crop."/>
+            <property name="color" code="colr" type="integer" access="rw"/>
+            <property name="kind" code="COdk" type="grid type" access="rw"/>
+            <property name="long edge" code="CGlo" type="integer" access="rw" description="The number of divided units along the long dimension of the image (rectangular kind only)."/>
+            <property name="short edge" code="CGsh" type="integer" access="rw" description="The number of divided units along the short dimension of the image (rectangular kind only)."/>
+            <property name="clockwise" code="CGcl" type="boolean" access="rw" description="The direction of the spiral (fibonacci spiral kind only)."/>
+            <property name="mirror" code="CGmi" type="boolean" access="rw" description="Whether or not to flip the spiral (fibonacci spiral kind only)."/>
+        </class>
+        
+        <class name="guide options" code="COuo" plural="guide options" description="Settings affecting the guides display in the viewer.">
+            <cocoa class="GuideSetAppleScript"/>
+            <element type="guide"/>
+            <property name="visible" code="pvis" type="boolean" access="rw" description="Whether or not the guides are shown."/>
+            <property name="follow crop" code="Cfcp" type="boolean" access="rw" description="Whether or not the guides are positioned relative to the crop."/>
+            <property name="color" code="colr" type="integer" access="rw"/>
+            <responds-to command="reset">
+                <cocoa method="handleResetItemCommand:"/>
+            </responds-to>
+        </class>
+        
+        <enumeration name="edge type" code="Cuee">
+            <enumerator name="top" code="CEtp"/>
+            <enumerator name="left" code="CElt"/>
+            <enumerator name="right" code="CErg"/>
+            <enumerator name="bottom" code="CEbt"/>
+        </enumeration>
+        
+        <class name="guide" code="COgu" description="A guide to be shown in the viewer.">
+            <cocoa class="GuideAppleScript"/>
+            <property name="distance" code="Cdst" type="real" access="rw" description="How far inside the image the guide appears relative to the edge."/>
+            <property name="units" code="Cunt" type="measurementUnit" access="rw" description="The unit type used by the distance property."/>
+            <property name="edge" code="Cedg" type="edge type" access="rw" description="The image edge to which this guide is related."/>
+        </class>
+        
+		<command name="process" code="Cap1proc" description="(PRO Only) Process a variant, or the variants of a RAW file">
+			<cocoa class="ProcessCommand"/>
+			<direct-parameter description="A variant or raw image path">
+				<type type="variant"/>
+				<type type="text"/>
+                <type type="file"/>
+                <type type="variant" list="yes"/>
+			</direct-parameter>
+			<parameter name="recipe" code="prRe" description="The name of the recipe to use when processing" type="text" optional="yes">
+				<cocoa key="processRecipe"/>
+			</parameter>
+			<result description="The batch job identifier string or an error message prefixed with the string &apos;ERROR&apos;" type="text"/>
+		</command>
+
+		<command hidden="yes" name="click mouse" code="Cap1clik" description="click the mouse at the specified location">
+			<cocoa class="ClickCommand"/>
+			<direct-parameter description="mouse click location">
+				<type type="integer" list="yes"/>
+			</direct-parameter>
+		</command>
+
+		<command name="add variant" code="Cap1nvar" description="Add a new Variant eg. &quot;tell myImage to add variant&quot;">
+			<cocoa class="NewVariantCommand"/>
+			<direct-parameter description="The image to add the variant to" type="image"/>
+			<parameter name="additive select" code="nvaS" description="Add the new variant to the application&apos;s selected variants" type="boolean" optional="yes">
+				<cocoa key="additiveSelectNewVariant"/>
+			</parameter>
+			<result description="Was the add successful?" type="boolean"/>
+		</command>
+
+        <command name="add inside" code="Cap1vaca" description="Add one or more variants to an album collection.">
+			<direct-parameter description="An album collection to add the variants to">
+				<type type="collection"/>
+			</direct-parameter>
+			<parameter name="variants" code="COvl" description="One or more variants to be added">
+				<cocoa key="listOfVariants"/>
+				<type type="variant" list="yes"/>
+			</parameter>
+        </command>
+
+        <command name="move inside" code="Cap1vacm" description="Move one or more variants into a collection (favorite or folder).">
+			<direct-parameter description="A collection to move the variants into">
+				<type type="collection"/>
+			</direct-parameter>
+			<parameter name="variants" code="COvl" description="One or more variants to be moved">
+				<cocoa key="listOfVariants"/>
+				<type type="variant" list="yes"/>
+			</parameter>
+        </command>
+        
+        <command name="clear compare" code="Cap1Cccv" description="Clear a collection's compare variant.">
+            <direct-parameter type="collection"/>
+        </command>
+        
+		<command name="capture" code="Cap1capt" description="(PRO Only) Try to start capturing with the currently selected camera into the foreground document.  Follow with a delay command in order to allow the image to be fully captured before continuing in the same script.">
+			<cocoa class="CaptureCommand"/>
+		</command>
+		
+		<command name="autocrop" code="Cap1aucr" description="(CH Only) Auto crop a variant">
+			<cocoa class="AutoCropCommand"/>
+			<direct-parameter description="A variant">
+				<type type="variant"/>
+			</direct-parameter>
+		</command>
+
+		<command name="clone variant" code="Cap1clon" description="Clone a variant">
+			<direct-parameter description="A variant">
+				<type type="variant"/>
+			</direct-parameter>
+			<parameter name="additive select" code="nvaS" description="Add the new variant to the application&apos;s selected variants" type="boolean" optional="yes">
+				<cocoa key="additiveSelectNewVariant"/>
+			</parameter>
+			<result type="variant"/>
+		</command>
+		
+        <command name="upgrade engine" code="Cap1UpNj" description="Upgrade a variant's processing engine to the current version.  Warning: cannot be undone.">
+            <direct-parameter description="A variant" type="variant"/>
+        </command>
+        
+		<command name="copy adjustments" code="Cap1Cadj" description="Copy a variant's adjustments to its parent document's settings clipboard.">
+			<direct-parameter description="A variant" type="variant"/>
+		</command>
+		
+		<command name="apply adjustments" code="Cap1Aadj" description="Apply adjustments to a variant from its parent document's settings clipboard.">
+			<direct-parameter description="A variant" type="variant"/>
+		</command>
+		
+		<command name="reload metadata" code="Cap1rmet" description="Reload a variant's source file metadata.">
+			<direct-parameter description="A variant" type="variant"/>
+		</command>
+
+		<command name="sync metadata" code="Cap1smet" description="Sync a variant's metadata back to its source file.">
+			<direct-parameter description="A variant" type="variant"/>
+		</command>
+
+		<command name="promote" code="Cap1PrmV" description="Promote a variant among its clones.">
+			<direct-parameter description="A variant" type="variant"/>
+		</command>
+
+		<command name="demote" code="Cap1DemV" description="Demote a variant among its clones.">
+			<direct-parameter description="A variant" type="variant"/>
+		</command>
+		
+        <command name="create LCC" code="Cap1CLCC" description="Create lens cast correction from this variant.">
+ 			<direct-parameter description="A variant" type="variant"/>
+			<parameter name="dust removal" code="CLdr" type="boolean" description="Include dust removal information in this LCC." optional="yes">
+				<cocoa key="dustRemoval"/>
+			</parameter>
+			<parameter name="wide angle" code="CLwa" type="boolean" description="Indicates that the image was captured using a wide angle lens with movements." optional="yes">
+				<cocoa key="wideAngle"/>
+			</parameter>
+       </command>
+        
+        <command name="apply LCC" code="Cap1ALCC" description="Apply lens cast correction from a variant to one or more other variants.">
+ 			<direct-parameter description="A variant with LCC" type="variant"/>
+			<parameter name="to" code="CLav" description="The variants to which the LCC should be applied." optional="no">
+				<cocoa key="listOfVariants"/>
+				<type type="variant" list="yes"/>
+			</parameter>
+       </command>
+        
+        <command name="apply keyword" code="Cap1ApKW" description="Apply an existing keyword to one or more variants.">
+            <direct-parameter description="An existing keyword object" type="keyword"/>
+            <parameter name="to" code="CLav" description="The variants to which the keyword should be applied." optional="no">
+                <cocoa key="listOfVariants"/>
+                <type type="variant" list="yes"/>
+            </parameter>
+        </command>
+
+        <command name="reset adjustments" code="Cap1Vrst" description="Reset the adjustment settings of a variant.">
+            <direct-parameter type="variant"/>
+        </command>
+
+        <command name="pick normalize" code="Cap1Cnzp" description="Set the document's “normalize target color” from a point on a variant.">
+            <direct-parameter description="A variant" type="variant"/>
+            <parameter name="at" code="insh" type="point" description="The pick point in pixels {horizontal, vertical}."/>
+        </command>
+
+        <command name="apply normalize" code="Cap1Cnza" description="Apply the document's “normalize target color” to a point on a variant.  The default normalization types are as defined in the UI, but may be overridden using the below optional parameters.">
+            <direct-parameter description="A variant" type="variant"/>
+            <parameter name="at" code="insh" type="point" description="The apply point in pixels {horizontal, vertical}."/>
+            <parameter name="adjust white balance" code="CAwb" type="boolean" optional="yes">
+                <cocoa key="wb"/>
+            </parameter>
+            <parameter name="adjust exposure" code="CAex" type="boolean" optional="yes">
+                <cocoa key="exposure"/>
+            </parameter>
+        </command>
+
+        <command name="pick dehaze" code="Cap1Cdhp" description="Set the adjustment “dehaze color” from a point on a variant.">
+            <direct-parameter type="adjustment settings"/>
+            <parameter name="at" code="insh" type="point" description="The pick point in pixels {horizontal, vertical}."/>
+        </command>
+
+        <command name="recalculate dehaze" code="Cap1Cdha" description="Set the adjustment “dehaze color” automatically.">
+            <direct-parameter type="adjustment settings"/>
+        </command>
+
+        <command name="autoadjust" code="Cap1Vaut" description="Automatically adjust a variant's settings. The default types of adjustments that will be performed are as defined in the UI, but may be overridden using the below optional parameters.">
+            <direct-parameter type="variant"/>
+            <parameter name="adjust white balance" code="CAwb" type="boolean" optional="yes">
+                 <cocoa key="wb"/>
+            </parameter>
+            <parameter name="adjust exposure" code="CAex" type="boolean" optional="yes">
+                 <cocoa key="exposure"/>
+            </parameter>
+            <parameter name="adjust contrast brightness" code="CAcb" type="boolean" optional="yes">
+                 <cocoa key="contrastBrightness"/>
+            </parameter>
+            <parameter name="adjust hdr" code="CAhd" type="boolean" optional="yes">
+                 <cocoa key="hdr"/>
+            </parameter>
+            <parameter name="adjust levels" code="CAlv" type="boolean" optional="yes">
+                 <cocoa key="levels"/>
+            </parameter>
+            <parameter name="adjust rotation" code="CAro" type="boolean" optional="yes">
+                 <cocoa key="rotation"/>
+            </parameter>
+            <parameter name="adjust keystone" code="CAky" type="boolean" optional="yes">
+                 <cocoa key="keystone"/>
+            </parameter>
+        </command>
+
+        <command name="maximum crop" code="Cap1MxCp" description="Determine the maximum crop for a variant.">
+            <direct-parameter type="variant"/>
+            <parameter name="horizontal" code="CpHz" type="boolean" optional="yes" description="Calculate the maximum horizontal size to which the existing crop may be expanded. Defaults to true."/>
+            <parameter name="vertical" code="CpVt" type="boolean" optional="yes" description="Calculate the maximum vertical size to which the existing crop may be expanded. Defaults to true."/>
+            <parameter name="apply" code="CpAp" type="boolean" optional="yes" description="Directly apply the calculated crop. Defaults to true."/>
+            <result type="rectangle"/>
+        </command>
+
+		<command name="select" code="Cap1vsel" description="Add one or more variants to the current collection's selection.">
+            <direct-parameter type="document"/>
+			<parameter name="variant" code="COvr" type="variant" description="The variant to select." optional="yes">
+				<cocoa key="theVariant"/>
+			</parameter>
+			<parameter name="variants" code="COvl" description="A list of variants to select." optional="yes">
+				<cocoa key="listOfVariants"/>
+				<type type="variant" list="yes"/>
+			</parameter>
+		</command>
+
+		<command name="deselect" code="Cap1vdsl" description="Remove one or more variants from the current collection's selection.">
+            <direct-parameter type="document"/>
+			<parameter name="variant" code="COvr" type="variant" description="The variant to deselect." optional="yes">
+				<cocoa key="theVariant"/>
+			</parameter>
+			<parameter name="variants" code="COvl" description="A list of variants to deselect." optional="yes">
+				<cocoa key="listOfVariants"/>
+				<type type="variant" list="yes"/>
+			</parameter>
+		</command>
+
+        <command name="rotate left" code="Cap1Vrol" description="Rotate the variant left 90 degrees.">
+            <direct-parameter type="variant"/>
+        </command>
+
+        <command name="rotate right" code="Cap1Vror" description="Rotate the variant right 90 degrees.">
+            <direct-parameter type="variant"/>
+        </command>
+
+        <command name="create people mask" code="Cap1Cpmk" description="Create AI people masks for a variant as new layers.">
+            <direct-parameter type="variant"/>
+            <parameter name="areas" code="PMap" optional="yes" description="The areas to mask. Areas not listed are not masked. If omitted, the application default (body skin and face skin) is used.">
+                <type type="people mask area" list="yes"/>
+                <cocoa key="areas"/>
+            </parameter>
+            <parameter name="separate layers" code="PMsl" type="boolean" optional="yes" description="If true, each enabled area becomes its own layer; if false, all enabled areas are combined into one layer. Defaults to false if not provided.">
+                <cocoa key="shouldCreateSeparateMasks"/>
+            </parameter>
+            <result description="The newly created people mask layers.">
+                <type type="layer" list="yes"/>
+            </result>
+        </command>
+
+		<command name="import" code="Cap1IMPO" description="Perform an import. If importing into a document, imports images according to what is defined in the document's import settings.">
+            <direct-parameter>
+                 <type type="document"/>
+                 <type type="keyword library"/>
+            </direct-parameter>
+            <parameter name="source" code="COIs" description="The file(s) or folder(s) to import.">
+                <type type="text" list="yes"/>
+                <type type="file" list="yes"/>
+            </parameter>
+		</command>
+
+		<command name="export originals" code="Cap1EXPO" description="Perform an image export according to what is defined in the document's export originals settings.">
+            <direct-parameter type="document"/>
+			<parameter name="variants" code="COvl" description="The variants(s) to be exported">
+				<type type="variant" list="yes"/>
+			</parameter>
+		</command>
+
+        <command name="backup now" code="Cap1Bkup" description="Perform an immediate document backup (catalogs only). The default functionality is as defined in the user interface, but may be overridden using the below optional parameters.">
+            <direct-parameter type="document"/>
+            <parameter name="location" code="CBlo" optional="yes">
+                <type type="text"/>
+                <type type="file"/>
+            </parameter>
+            <parameter name="test integrity" code="CBti" type="boolean" optional="yes"/>
+            <parameter name="optimize" code="CBop" type="boolean" optional="yes"/>
+        </command>
+
+		<command name="create template" code="Cap1Tmpl" description="Create a named template using this document. Will quietly overwrite an existing template of the same name.">
+            <direct-parameter type="document"/>
+			<parameter name="named" code="COTn" description="The name of the template to be created." type="text"/>
+		</command>
+		
+		<command name="pack" code="Cap1PEIP" description="Pack an image into an Enhanced Image Package file.">
+            <direct-parameter type="image"/>
+		</command>
+
+		<command name="unpack" code="Cap1UEIP" description="Unpack an image from an Enhanced Image Package file.">
+            <direct-parameter type="image"/>
+		</command>
+
+        <command name="relink" code="Cap1Rlnk" description="Relink a catalog image file.  The file must be the exact same size and type as the originally imported image.">
+            <direct-parameter type="image"/>
+            <parameter name="to path" code="COpt" description="The new path for the image's file." type="text">
+                <cocoa key="thePath"/>
+            </parameter>
+        </command>
+
+		<command name="batch rename" code="Cap1BRnm" description="Perform a batch rename according to what is defined in the document's batch rename settings.">
+            <direct-parameter type="document"/>
+			<parameter name="variants" code="COvl" description="The variants(s) to be renamed">
+				<type type="variant" list="yes"/>
+			</parameter>
+		</command>
+
+		<command name="synchronize" code="Cap1Sync" description="Perform imports and/or deletes in a folder collection to reflect the contents of the actual folder on disk.  All parameters below are optional.">
+            <direct-parameter type="collection"/>
+			<parameter name="subfolders" code="COSs" description="Also consider the contents of subfolders within the folder. Defaults to false." type="boolean" optional="yes"/>
+            <parameter name="only include previously added subfolders" code="COSu" description="Only consider the contents of subfolders that were previously added - when false ALL subfolders will be considered. Defaults to true." type="boolean" optional="yes"/>
+			<parameter name="importing" code="COSi" description="Import any new images into the collection. Defaults to true." type="boolean" optional="yes"/>
+			<parameter name="removing" code="COSr" description="Delete any variants in the collection for whom the files no longer exist. Defaults to false." type="boolean" optional="yes"/>
+		</command>
+
+		<command name="clear mask" code="Cap1Lclr" description="Clear the mask of a layer.">
+            <direct-parameter type="layer"/>
+		</command>
+
+		<command name="invert mask" code="Cap1Linv" description="Invert the mask of a layer.">
+            <direct-parameter type="layer"/>
+		</command>
+
+		<command name="fill mask" code="Cap1Lfil" description="Fill the mask of a layer.">
+            <direct-parameter type="layer"/>
+		</command>
+
+        <command name="rasterize mask" code="Cap1Lmra" description="Rasterize the mask of a layer.">
+            <direct-parameter type="layer"/>
+        </command>
+
+		<command name="feather mask" code="Cap1Lfth" description="Feather the mask of a layer.">
+            <direct-parameter type="layer"/>
+			<parameter name="amount" code="COfa" type="real" description="The amount of feathering to perform, from 0 to 100."/>
+		</command>
+
+        <command name="refine mask" code="Cap1Lmrf" description="Refine the mask of a layer.">
+            <direct-parameter type="layer"/>
+            <parameter name="amount" code="COfa" type="real" description="The amount of refining to perform, from 0 to 300."/>
+        </command>
+
+		<command name="copy mask" code="Cap1Lcop" description="Copy the mask of a layer.">
+            <direct-parameter type="layer"/>
+			<parameter name="to layer" code="COtl" type="layer" description="The layer to which the mask is to be copied."/>
+		</command>
+
+        <command name="apply style" code="Cap1Laps" description="Apply a style or preset to a layer.">
+            <direct-parameter type="layer"/>
+            <parameter name="named" code="COTn" type="text" description="The name of the style or preset to be applied."/>
+        </command>
+
+        <command name="clear luma range" code="Cap1LRcl" description="Clear the luma range from a layer.">
+            <direct-parameter type="layer"/>
+        </command>
+
+		<command name="increment" code="Cap1CAin" description="Increment the value of the camera attribute.">
+            <direct-parameter type="attribute"/>
+		</command>
+
+		<command name="decrement" code="Cap1CAde" description="Increment the value of the camera attribute.">
+            <direct-parameter type="attribute"/>
+		</command>
+  
+        <command name="adjust focus" code="Cap1Focs" description="Adjust the camera focus.">
+            <direct-parameter type="camera"/>
+            <parameter name="by amount" code="CFam" type="integer" description="The amount to adjust the focus, usually in a range between -3 to +3."/>
+            <parameter name="sync" code="Sync" type="boolean" optional="yes" description="Should Capture One wait for the focus adjustment to complete before returning. Defaults to true."/>
+        </command>
+
+        <command name="apply workspace" code="Cap1LdWk" description="Load and apply a workspace.">
+            <direct-parameter type="text" description="Name of the workspace to be applied."/>
+        </command>
+
+        <command name="silently quit" code="Cap1SiQt" description="Quit silently by automatically terminating any current activities (e.g. importing, exporting, Live View) and skipping any backup prompts that would normally appear."/>
+
+        <command name="test mark" code="Cap1Ctmk" hidden="yes">
+            <parameter name="named" code="COTn" type="text" optional="yes"/>
+            <parameter name="time" code="Ctmt" type="boolean" optional="yes"/>
+            <parameter name="memory" code="Ctmm" type="boolean" optional="yes"/>
+            <parameter name="start time" code="Ctst" type="real" optional="yes"/>
+        </command>
+
+        <command name="test internal event" code="Cap1Ctie" hidden="yes">
+            <parameter name="named" code="COTn" type="text" optional="yes"/>
+            <parameter name="notification" code="Ctno" type="text"/>
+            <parameter name="next script path" code="Ctsp" type="text" optional="yes"/>
+        </command>
+
+        <command name="test async event" code="Cap1Ctce" hidden="yes">
+            <parameter name="named" code="COTn" type="text"/>
+            <parameter name="notification" code="Ctno" type="text"/>
+            <parameter name="next script path" code="Ctsp" type="text" optional="yes"/>
+        </command>
+
+        <enumeration name="select type" code="C1St">
+            <enumerator name="next collection" code="SNCo"/>
+            <enumerator name="previous collection" code="SPCo"/>
+            <enumerator name="next set" code="SNSe"/>
+            <enumerator name="previous set" code="SPSe"/>
+            <enumerator name="next variant" code="SNVa"/>
+            <enumerator name="previous variant" code="SPVa"/>
+       </enumeration>
+
+        <command name="change selection" code="Cap1CSel" description="Change the document's selection by the specified type.">
+            <direct-parameter type="document"/>
+            <parameter name="to" code="CtTy" type="select type" optional="no"/>
+        </command>
+
+        <command name="reset" code="Cap1Rset" description="Reset settings to defaults.">
+            <direct-parameter type="item"/>
+        </command>
+
+        <command name="show" code="Cap1Slfs" description="Show this on any attached Live for Studio.">
+            <direct-parameter type="item"/>
+        </command>
+
+    </suite>
+
+</dictionary>
