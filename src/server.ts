@@ -53,7 +53,17 @@ export function previewToolResult(value: PreviewResult, returnImage = true): Too
   ] };
 }
 
+/** Why ids go missing: Capture One resolves variants only within the current collection. */
+const NOT_FOUND_NOTE =
+  "Variant ids resolve only within Capture One's current collection. If these ids exist, the " +
+  "current collection is probably a filtered album; make All Images or the session folder " +
+  "current (co_set_current_collection) and retry.";
+
 function ok(value: unknown): ToolResult {
+  const v = value as { notFound?: unknown } | null;
+  if (v && typeof v === "object" && !Array.isArray(v) && Array.isArray(v.notFound) && v.notFound.length) {
+    value = { ...v, notFoundNote: NOT_FOUND_NOTE };
+  }
   return { content: [{ type: "text", text: JSON.stringify(value, null, 2) }] };
 }
 
@@ -299,7 +309,12 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
       scope: z
         .enum(["collection", "document", "selection"])
         .default("collection")
-        .describe("Where to look: a collection, the whole document, or the user's current selection"),
+        .describe(
+          "Where to look: a collection, 'document', or the user's current selection. Capture One " +
+            "scopes 'document' to the CURRENT collection (its dictionary has no document-wide " +
+            "variant list), so it covers the whole session only while All Images or the session " +
+            "folder is current; the result's currentCollection says which it was.",
+        ),
       collection: z
         .string()
         .optional()

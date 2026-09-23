@@ -400,7 +400,7 @@ export async function runJxa<T>(body: string, options: RunOptions = {}): Promise
       // Index 0 is the background layer.
       function resolveLayer(ref) {
         var r = resolveTargets({ variantIds: [ref.variantId] });
-        if (!r.targets.length) throw new Error("No variant with id '" + ref.variantId + "'.");
+        if (!r.targets.length) throw new Error("No variant with id '" + ref.variantId + "' in the current collection. Capture One resolves variants only within the current collection; if the id exists, make All Images or the session folder current and retry.");
         var v = r.targets[0];
         var layers = v.layers();
         if (ref.layerIndex < 0 || ref.layerIndex >= layers.length) {

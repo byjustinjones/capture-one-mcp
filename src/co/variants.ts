@@ -35,6 +35,8 @@ export interface VariantSummary {
 
 export interface ListVariantsResult {
   scopeDescription: string;
+  /** The collection Capture One actually scoped a "document" listing to. */
+  currentCollection?: { name: string; kind: string } | null;
   totalInScope: number;
   matched: number;
   returned: number;
@@ -74,16 +76,25 @@ export async function listVariants(input: ListVariantsInput): Promise<ListVarian
   return runJxa<ListVariantsResult>(
     `
     const doc = requireDoc();
-    let source, scopeDescription, isSpec;
+    let source, scopeDescription, isSpec, currentCollection;
 
     if (args.scope === "selection") {
       source = co.selectedVariants();   // plain array -- no bulk reads possible
       isSpec = false;
       scopeDescription = "current selection";
     } else if (args.scope === "document") {
+      // Capture One's dictionary: a document's "directly contained image and
+      // variant elements are for the current collection". There is no
+      // document-wide variant list, so this is the current collection -- all
+      // of the session only while an unfiltered collection (All Images, or the
+      // session folder) is current. Say so rather than imply a whole document.
       source = doc.variants;
       isSpec = true;
-      scopeDescription = "document " + doc.name();
+      let cc = null;
+      try { cc = doc.currentCollection(); } catch (e) {}
+      currentCollection = cc ? { name: String(cc.name()), kind: String(cc.kind()) } : null;
+      scopeDescription = "document " + doc.name() + ", limited by Capture One to the current collection" +
+        (currentCollection ? " '" + currentCollection.name + "' (" + currentCollection.kind + ")" : "");
     } else {
       let col = null;
       if (args.collection) {
@@ -312,6 +323,7 @@ export async function listVariants(input: ListVariantsInput): Promise<ListVarian
 
     return {
       scopeDescription: scopeDescription,
+      ...(currentCollection !== undefined ? { currentCollection: currentCollection } : {}),
       totalInScope: totalInScope,
       matched: matched,
       returned: page.length,
@@ -333,7 +345,7 @@ export async function getVariant(id: string): Promise<Record<string, unknown>> {
     // .id() per variant, which is a round trip each and unusable on a catalog.
     const picked = resolveTargets({ variantIds: [args.id] });
     if (!picked.targets.length) {
-      throw new Error("No variant with id '" + args.id + "' in the current document.");
+      throw new Error("No variant with id '" + args.id + "' in the current collection of this document. Capture One resolves variants only within the current collection; if the id exists, make All Images or the session folder current and retry.");
     }
     const v = picked.targets[0];
 

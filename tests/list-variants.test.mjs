@@ -21,7 +21,10 @@ const variants = {
   pick: () => rows.map(() => false), selected: () => rows.map(() => false),
   parentImage: { extension: col('ext') },
 };
-const co = { currentDocument: () => ({ id: () => 'doc', name: () => 'Test', variants }) };
+// The document's variants are those of its current collection (Capture One's
+// dictionary says so); the listing must say which collection that was.
+const current = { name: () => 'Five Stars', kind: () => 'smart album' };
+const co = { currentDocument: () => ({ id: () => 'doc', name: () => 'Test', variants, currentCollection: () => current }) };
 const originalExecFile = childProcess.execFile;
 const originalPin = process.env.CAPTURE_ONE_MCP_DOCUMENT;
 delete process.env.CAPTURE_ONE_MCP_DOCUMENT;
@@ -87,4 +90,10 @@ test('extension filter ignores case and a leading dot', async () => {
   assert.equal(paged.truncated, true);
   // The extension is reported as stored, not as normalised for matching.
   assert.equal((await list({ extensions: ['nef'] })).variants[0].extension, 'NEF');
+});
+
+test('document scope names the current collection it was limited to', async () => {
+  const r = await list();
+  assert.deepEqual(r.currentCollection, { name: 'Five Stars', kind: 'smart album' });
+  assert.match(r.scopeDescription, /limited by Capture One to the current collection 'Five Stars' \(smart album\)/);
 });
