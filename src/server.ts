@@ -43,11 +43,13 @@ const ADJUSTMENT_CASING_NOTE =
 
 type ToolResult = { content: ({ type: "text"; text: string } | { type: "image"; data: string; mimeType: string })[]; isError?: boolean };
 
-export function previewToolResult(value: PreviewResult): ToolResult {
+/** returnImage false leaves only the text metadata, so an agent saving a batch
+ *  of renders to disk with output_path does not pull every image into context. */
+export function previewToolResult(value: PreviewResult, returnImage = true): ToolResult {
   const { data, ...metadata } = value;
   return { content: [
     { type: "text", text: JSON.stringify(metadata, null, 2) },
-    { type: "image", data, mimeType: value.mimeType },
+    ...(returnImage ? [{ type: "image" as const, data, mimeType: value.mimeType }] : []),
   ] };
 }
 
@@ -933,15 +935,28 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
     "co_render_preview", "data",
     "Return a bounded sRGB JPEG as an MCP image for one variant in the expected document. " +
       "Uses a private temporary export recipe and folder. Requires write access; " +
-      "does not change image adjustments. Cleanup may be deferred while processing remains active.",
+      "does not change image adjustments. Cleanup may be deferred while processing remains active. " +
+      "Optionally also saves the JPEG to output_path (absolute, ending .jpg, in an existing folder, " +
+      "not inside the session's Capture folder, no '..'); an existing file there is refused unless " +
+      "overwrite is true. The result then includes savedTo. Set return_image false to get only the " +
+      "text metadata, e.g. when saving many renders to disk.",
     {
       document_id: z.string().min(1), variant_id: z.string().min(1),
       max_edge: z.number().int().min(64).max(2560).default(1600),
       wait_seconds: z.number().int().min(1).max(120).default(60),
+      output_path: z.string().optional()
+        .describe("Absolute path ending in .jpg whose parent folder already exists"),
+      overwrite: z.boolean().default(false).describe("Replace an existing file at output_path"),
+      return_image: z.boolean().default(true)
+        .describe("Include the image block; false returns only the text metadata"),
     },
-    async a => renderPreview({ documentId: a.document_id, variantId: a.variant_id,
-      maxEdge: a.max_edge, waitSeconds: a.wait_seconds }),
-    previewToolResult,
+    async a => ({
+      preview: await renderPreview({ documentId: a.document_id, variantId: a.variant_id,
+        maxEdge: a.max_edge, waitSeconds: a.wait_seconds,
+        ...(a.output_path !== undefined ? { outputPath: a.output_path, overwrite: a.overwrite } : {}) }),
+      returnImage: a.return_image,
+    }),
+    ({ preview, returnImage }) => previewToolResult(preview, returnImage),
   );
   tool(
     "co_compare_variants", "read",

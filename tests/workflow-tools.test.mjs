@@ -19,10 +19,18 @@ for (const allowData of [false, true]) test(`workflow tool policy with data writ
     assert.equal(comparison.annotations.readOnlyHint,true);
     assert.ok(comparison.inputSchema.required.includes('document_id'));
     if(allowData) {
+      const props=Object.keys(tools.find(t=>t.name==='co_render_preview').inputSchema.properties);
+      for(const k of ['output_path','overwrite','return_image']) assert.ok(props.includes(k),k);
       const bad=await client.callTool({name:'co_render_preview',arguments:{document_id:'d',variant_id:'v',max_edge:9999}});
       assert.equal(bad.isError,true);
     }
   } finally {await client.close();await server.close();}
+});
+test('return_image false leaves only the text metadata', () => {
+  const result=previewToolResult({documentId:'d',variantId:'v',batchId:'b',width:100,height:100,maxEdge:100,bytes:3,mimeType:'image/jpeg',data:'/9j/',colorProfile:'sRGB',savedTo:'/tmp/x.jpg'},false);
+  assert.equal(result.content.length,1);
+  assert.equal(result.content[0].type,'text');
+  assert.equal(JSON.parse(result.content[0].text).savedTo,'/tmp/x.jpg');
 });
 test('preview response carries image bytes once, separate from metadata', () => {
   const result=previewToolResult({documentId:'d',variantId:'v',batchId:'b',width:100,height:100,maxEdge:100,bytes:3,mimeType:'image/jpeg',data:'/9j/',colorProfile:'sRGB'});

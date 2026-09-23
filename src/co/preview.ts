@@ -1,16 +1,24 @@
 import { constants } from "node:fs";
-import { lstat, mkdtemp, open, realpath, rm } from "node:fs/promises";
+import { lstat, mkdtemp, open, realpath, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { CaptureOneError, runJxa } from "../jxa/bridge.js";
 import { drainTracker } from "./queue-drain.js";
 
-export interface PreviewOptions { documentId: string; variantId: string; maxEdge?: number; waitSeconds?: number }
+export interface PreviewOptions {
+  documentId: string; variantId: string; maxEdge?: number; waitSeconds?: number;
+  /** Absolute path ending .jpg in an existing folder; the verified JPEG is also saved there. */
+  outputPath?: string;
+  /** Replace an existing regular file at outputPath. Off by default. */
+  overwrite?: boolean;
+}
 export interface PreviewResult {
   documentId: string; variantId: string; batchId: string; width: number; height: number;
   maxEdge: number; bytes: number; mimeType: "image/jpeg"; data: string;
   colorProfile: string; cleanupWarning?: string;
+  /** Where the JPEG was saved, when outputPath was given. */
+  savedTo?: string;
 }
 const MAX_BYTES = 8 * 1024 * 1024;
 
@@ -45,9 +53,31 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
   if (!documentId?.trim() || !variantId?.trim()) throw new Error("Explicit documentId and variantId are required.");
   if (!Number.isInteger(maxEdge) || maxEdge < 64 || maxEdge > 2560) throw new Error("maxEdge must be an integer from 64 to 2560.");
   if (!Number.isInteger(waitSeconds) || waitSeconds < 1 || waitSeconds > 120) throw new Error("waitSeconds must be an integer from 1 to 120.");
+  // output_path is checked before anything is created or submitted, so a bad
+  // path costs nothing. The write itself re-checks (O_EXCL / O_NOFOLLOW)
+  // because the filesystem can change during the render.
+  const { outputPath, overwrite = false } = options;
+  let outputReal: string | null = null;
+  if (outputPath !== undefined) {
+    if (typeof outputPath !== "string" || !outputPath.startsWith("/") || !/\.jpg$/i.test(outputPath))
+      throw new Error("output_path must be an absolute path ending in .jpg.");
+    // Refused outright rather than normalised: a path that climbs out of
+    // where it appears to point is not one to write a file to.
+    if (outputPath.includes("..")) throw new Error("output_path must not contain '..'.");
+    const parent = await realpath(dirname(outputPath)).catch(() => null);
+    if (!parent || !(await stat(parent)).isDirectory())
+      throw new Error(`output_path's folder '${dirname(outputPath)}' does not exist; create it first.`);
+    outputReal = join(parent, basename(outputPath));
+    const existing = await lstat(outputReal).catch(() => null);
+    if (existing && (!overwrite || !existing.isFile()))
+      throw new Error(existing.isFile()
+        ? `'${outputPath}' already exists; pass overwrite: true to replace it.`
+        : `'${outputPath}' exists and is not a regular file; refusing to replace it.`);
+  }
   const folder = await realpath(await mkdtemp(join(tmpdir(), "capture-one-mcp-preview-")));
   const recipeName = "MCP Preview " + randomUUID();
-  const args = { documentId, variantId, maxEdge, folder, recipeName };
+  const args = { documentId, variantId, maxEdge, folder, recipeName,
+    outputPaths: outputPath !== undefined ? [outputPath, outputReal] : [] };
   let drained = false;
   // Stronger than drained: the job was seen and left the queue, or its output
   // exists. A quiet-period drain alone cannot rule out a job that simply has
@@ -63,6 +93,22 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
       const d = resolved.doc;
       if (String(d.id()) !== args.documentId) throw new Error("CO_MCP_WRONG_DOCUMENT: preview document does not match the front document.");
       if (resolved.targets.length !== 1 || resolved.notFound.length) throw new Error("Preview variant was not found.");
+      // Never save a preview among the originals: a stray JPEG in the Capture
+      // folder is imported into the session as if it were a capture. Only a
+      // session has one; on a catalog the read fails and there is nothing to check.
+      if (args.outputPaths.length) {
+        let captures = null;
+        try { captures = d.captures(); } catch (e) {}
+        captures = captures ? String(captures) : "";
+        while (captures.slice(-1) === "/") captures = captures.slice(0, -1);
+        if (captures && captures !== "missing value") {
+          for (let i = 0; i < args.outputPaths.length; i++) {
+            const p = args.outputPaths[i];
+            if (p === captures || p.indexOf(captures + "/") === 0)
+              throw new Error("CO_MCP_REFUSED: output_path is inside this session's Capture folder ('" + captures + "'); choose another folder. Nothing was rendered.");
+          }
+        }
+      }
       const current = d.currentRecipe();
       const currentName = current ? String(current.name()) : null;
       const r = co.make({new: "recipe", at: d, withProperties: {name: args.recipeName, enabled: false}});
@@ -103,7 +149,7 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
     batchId = started.batchId;
     const deadline = Date.now() + waitSeconds * 1000;
     const drain = drainTracker();
-    const outputPath = join(folder, "preview.jpg");
+    const renderedPath = join(folder, "preview.jpg");
     do {
       const pending = await runJxa<number>(`
         const d = requireDoc();
@@ -118,7 +164,7 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
       // The rendered file existing is completion evidence even if the job was
       // never caught in the queue. Checked only once the queue reads empty, so
       // a file still being written by a pending job is not mistaken for done.
-      const fileSeen = pending === 0 && await lstat(outputPath).then(st => st.isFile(), () => false);
+      const fileSeen = pending === 0 && await lstat(renderedPath).then(st => st.isFile(), () => false);
       if (fileSeen) completed = true;
       const drainedBy = drain.observe(pending, fileSeen);
       if (drainedBy) {
@@ -148,8 +194,19 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
     } finally { await file.close(); }
     const dimensions = jpegDimensions(data);
     if (Math.max(dimensions.width, dimensions.height) > maxEdge) throw new Error("Preview exceeds the requested pixel bound.");
+    if (outputReal) {
+      // O_EXCL makes "never replace without overwrite" hold even if a file
+      // appeared during the render; O_NOFOLLOW stops a symlink planted there
+      // redirecting the write.
+      const flags = constants.O_WRONLY | constants.O_CREAT | constants.O_NOFOLLOW |
+        (overwrite ? constants.O_TRUNC : constants.O_EXCL);
+      const out = await open(outputReal, flags, 0o644)
+        .catch(error => { throw new Error(`Rendered, but could not save to '${outputPath}': ${String(error)}`); });
+      try { await out.writeFile(data); } finally { await out.close(); }
+    }
     result = {documentId, variantId, batchId, ...dimensions, maxEdge, bytes:data.length,
-      mimeType:"image/jpeg", data:data.toString("base64"), colorProfile:"sRGB Color Space Profile"};
+      mimeType:"image/jpeg", data:data.toString("base64"), colorProfile:"sRGB Color Space Profile",
+      ...(outputPath !== undefined ? {savedTo: outputPath} : {})};
   } catch (error) { failure = error; }
   // Never delete a recipe/folder after uncertain submission or while jobs may remain.
   let cleanupWarning: string | undefined;

@@ -124,7 +124,7 @@ Editing tools, hidden unless `CAPTURE_ONE_MCP_ALLOW_WRITE=1`:
 | `co_export_originals` | Copy originals out |
 | `co_import_images` | Import image files (paths validated) |
 | `co_create_candidates` | Clone variants into editable candidates, preserving existing edits |
-| `co_render_preview` | Render one variant to a bounded sRGB JPEG returned as an MCP image |
+| `co_render_preview` | Render one variant to a bounded sRGB JPEG returned as an MCP image; optionally also saved to `output_path` (`return_image: false` for metadata only) |
 | `co_open_document` | Open a session or catalog by path |
 
 `co_process_variants` checks the effective recipe before submitting work. Recipes
