@@ -99,6 +99,7 @@ export class CaptureOneError extends Error {
 
 export type CaptureOneErrorCode =
   | "NOT_RUNNING"
+  /** co_status only: the process is running but the probe's Apple Event timed out. */
   | "EVENTS_BLOCKED"
   | "NOT_AUTHORIZED"
   | "TIMEOUT"
@@ -209,6 +210,15 @@ function busyError(): CaptureOneError {
     "BUSY",
   );
 }
+
+/** The same warnings for a mutating call that failed without timing out. */
+const PARTIAL_MUTATING =
+  "IMPORTANT: this operation MUTATES state and may have partially applied before it " +
+  "failed. Inspect the current state before retrying; retrying blindly can apply it twice.";
+const PARTIAL_IN_FLIGHT =
+  "IMPORTANT: work was ALREADY SUBMITTED to Capture One before this error, and may still " +
+  "be running or already finished. Inspect the batch queue and the output files before " +
+  "retrying; retrying blindly can process everything a second time.";
 
 /** Fallback budget for calls that do not specify one. CAPTURE_ONE_MCP_TIMEOUT_MS
  *  was previously loaded into config and never read by anything; the bridge is
@@ -350,11 +360,13 @@ export async function runJxa<T>(body: string, options: RunOptions = {}): Promise
   try {
     parsed = JSON.parse(stdout.trim());
   } catch {
-    throw new CaptureOneError(
+    const e = new CaptureOneError(
       "Capture One returned a value that could not be decoded as JSON.",
       "SCRIPT_ERROR",
       stdout.slice(0, 2000),
     );
+    // The script ran to completion, so a mutating one has done its writes.
+    throw mutation ? withPartialAdvice(e, retryAdvice) : e;
   }
   return parsed.value;
 }
@@ -370,6 +382,12 @@ function execOsascript(
     // Re-checked here, holding the lock: a write queued behind the one that
     // timed out must be refused when its turn comes, not when it was queued.
     if (mutation && busyState) return reject(busyError());
+    // A state-changing script that fails for ANY reason may have failed after
+    // some of its writes landed -- a batch that threw on its fifth variant has
+    // edited four. Timeouts already say so; every other failure of a mutating
+    // call has to as well, or the model reads "error" as "nothing happened".
+    const fail = (e: CaptureOneError) =>
+      reject(mutation && e.code !== "TIMEOUT" ? withPartialAdvice(e, retryAdvice) : e);
     // The script goes in on STDIN ("-"), not as an -e argv element.
     //
     // argv cannot carry a NUL byte -- execFile throws ERR_INVALID_ARG_VALUE
@@ -383,82 +401,20 @@ function execOsascript(
       { timeout: timeoutMs, killSignal: "SIGKILL", maxBuffer: 32 * 1024 * 1024 },
       (error, stdout, stderr) => {
         if (!error) return resolve(stdout);
-
         const text = `${stderr}`.trim();
-
-        // execFile reports its own timeout via `killed`, and the Apple Event
-        // layer reports -1712. Both mean "nothing came back in time".
-        if ((error as NodeJS.ErrnoException & { killed?: boolean }).killed || text.includes("-1712")) {
-          if (mutation) {
-            busyState = {
-              reason: `a state-changing call did not respond within ${Math.round(timeoutMs / 1000)}s`,
-              since: new Date().toISOString(),
-            };
-          }
-          return reject(
-            new CaptureOneError(
-              `Capture One did not respond within ${Math.round(timeoutMs / 1000)}s. ` +
-                "This usually means one of: (a) a macOS automation-permission dialog is " +
-                "waiting for a click, which blocks every Apple Event until dismissed; " +
-                "(b) Capture One is showing a modal dialog; or (c) it is busy with a long " +
-                "import/process. " +
-                retryAdvice,
-              "TIMEOUT",
-              text.slice(0, 2000),
-            ),
-          );
+        const killed = Boolean((error as NodeJS.ErrnoException & { killed?: boolean }).killed);
+        const e = classifyFailure(text, killed, timeoutMs, retryAdvice);
+        if (e.code === "TIMEOUT" && mutation) {
+          busyState = {
+            reason: `a state-changing call did not respond within ${Math.round(timeoutMs / 1000)}s`,
+            since: new Date().toISOString(),
+          };
         }
-
-        // -1743 = user has denied automation access for this client.
-        if (text.includes("-1743") || /not (allowed|authorized|authorised)/i.test(text)) {
-          return reject(
-            new CaptureOneError(
-              "Not authorised to control Capture One. Grant access under System Settings > " +
-                "Privacy & Security > Automation for the app hosting this MCP server.",
-              "NOT_AUTHORIZED",
-              text.slice(0, 2000),
-            ),
-          );
-        }
-
-        // -600 / -609 = the target application is not running.
-        if (text.includes("-600") || text.includes("-609")) {
-          return reject(
-            new CaptureOneError("Capture One is not running.", "NOT_RUNNING"),
-          );
-        }
-
-        if (text.includes("CO_MCP_WRONG_DOCUMENT")) {
-          return reject(
-            new CaptureOneError(
-              firstLine(text).replace(/^.*CO_MCP_WRONG_DOCUMENT:\s*/, "") +
-                " Refusing to act: variant ids are only meaningful within the document they came " +
-                "from, so this could edit the wrong catalog.",
-              "WRONG_DOCUMENT",
-            ),
-          );
-        }
-
-        if (text.includes("CO_MCP_NO_DOCUMENT") || /no document is open/i.test(text)) {
-          return reject(
-            new CaptureOneError(
-              "No Capture One document is open. Open a session or catalog first.",
-              "NO_DOCUMENT",
-            ),
-          );
-        }
-
-        return reject(
-          new CaptureOneError(
-            firstLine(text) || "Capture One rejected the script.",
-            "SCRIPT_ERROR",
-            text.slice(0, 2000),
-          ),
-        );
+        return fail(e);
       },
     );
 
-    child.on("error", (err) => reject(new CaptureOneError(err.message, "SCRIPT_ERROR")));
+    child.on("error", (err) => fail(new CaptureOneError(err.message, "SCRIPT_ERROR")));
 
     // A child that exits before the script is fully written (a spawn failure,
     // or the timeout kill) makes this write fail; the callback above already
@@ -467,6 +423,100 @@ function execOsascript(
     child.stdin?.on("error", () => {});
     child.stdin?.end(source);
   }));
+}
+
+/**
+ * Translates a failed osascript run into a CaptureOneError.
+ *
+ * The server's own CO_MCP_* markers are checked FIRST: they carry text we
+ * wrote (a pinned path, a document id) that can contain anything. After that,
+ * osascript errors are classified only by the error NUMBER that ends the error
+ * line -- `... execution error: <message> (-1712)`. Substring-searching all of
+ * stderr misfired on user data: a collection named "Shoot-600" read as "not
+ * running", a pin path containing "-1712" as a timeout, and Capture One's own
+ * "operation not allowed" as a missing automation grant.
+ */
+function classifyFailure(text: string, killed: boolean, timeoutMs: number, retryAdvice: string): CaptureOneError {
+  // execFile reports its own timeout via `killed`; nothing came back at all.
+  if (killed) return timeoutError(text, timeoutMs, retryAdvice);
+
+  const wrong = text.split("\n").find((l) => l.includes("CO_MCP_WRONG_DOCUMENT"));
+  if (wrong !== undefined) {
+    return new CaptureOneError(
+      stripErrorNumber(wrong.replace(/^.*CO_MCP_WRONG_DOCUMENT:?\s*/, "")) +
+        " Refusing to act: variant ids are only meaningful within the document they came " +
+        "from, so this could edit the wrong catalog.",
+      "WRONG_DOCUMENT",
+    );
+  }
+  if (text.includes("CO_MCP_NO_DOCUMENT")) {
+    return new CaptureOneError(
+      "No Capture One document is open. Open a session or catalog first.",
+      "NO_DOCUMENT",
+    );
+  }
+
+  switch (errorNumber(text)) {
+    // The Apple Event layer's own timeout: same meaning as a kill.
+    case -1712:
+      return timeoutError(text, timeoutMs, retryAdvice);
+    // The user has denied automation access for this client.
+    case -1743:
+      return new CaptureOneError(
+        "Not authorised to control Capture One. Grant access under System Settings > " +
+          "Privacy & Security > Automation for the app hosting this MCP server.",
+        "NOT_AUTHORIZED",
+        text.slice(0, 2000),
+      );
+    // The target application is not running / the connection is invalid.
+    case -600:
+    case -609:
+      return new CaptureOneError("Capture One is not running.", "NOT_RUNNING");
+  }
+
+  if (/no document is open/i.test(text)) {
+    return new CaptureOneError(
+      "No Capture One document is open. Open a session or catalog first.",
+      "NO_DOCUMENT",
+    );
+  }
+
+  return new CaptureOneError(
+    firstLine(text) || "Capture One rejected the script.",
+    "SCRIPT_ERROR",
+    text.slice(0, 2000),
+  );
+}
+
+function timeoutError(text: string, timeoutMs: number, retryAdvice: string): CaptureOneError {
+  return new CaptureOneError(
+    `Capture One did not respond within ${Math.round(timeoutMs / 1000)}s. ` +
+      "This usually means one of: (a) a macOS automation-permission dialog is " +
+      "waiting for a click, which blocks every Apple Event until dismissed; " +
+      "(b) Capture One is showing a modal dialog; or (c) it is busy with a long " +
+      "import/process. " +
+      retryAdvice,
+    "TIMEOUT",
+    text.slice(0, 2000),
+  );
+}
+
+/** The osascript error number, read only from the END of the error line. */
+function errorNumber(text: string): number | null {
+  const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+  const line = [...lines].reverse().find((l) => /execution error/i.test(l)) ?? lines[lines.length - 1] ?? "";
+  const m = /\((-?\d+)\)\s*$/.exec(line);
+  return m ? Number(m[1]) : null;
+}
+
+function stripErrorNumber(line: string): string {
+  return line.replace(/\s*\(-?\d+\)\s*$/, "").trim();
+}
+
+/** Advice for a mutating call that failed WITHOUT timing out. */
+function withPartialAdvice(e: CaptureOneError, retryAdvice: string): CaptureOneError {
+  const advice = retryAdvice === RETRY_IN_FLIGHT ? PARTIAL_IN_FLIGHT : PARTIAL_MUTATING;
+  return new CaptureOneError(`${e.message} ${advice}`, e.code, e.detail);
 }
 
 function firstLine(text: string): string {

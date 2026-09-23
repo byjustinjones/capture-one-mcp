@@ -286,6 +286,14 @@ than assumed:
   machine until someone clicks it. Nothing fails fast; calls just sit until the
   Apple Event timeout (`-1712`). `src/jxa/bridge.ts` imposes its own wall-clock
   budget and translates this into an actionable message.
+- **Errors carry a code**: `NOT_RUNNING`, `NOT_AUTHORIZED`, `TIMEOUT`,
+  `NO_DOCUMENT`, `WRONG_DOCUMENT`, `BUSY` or `SCRIPT_ERROR` (`co_status`
+  additionally reports `EVENTS_BLOCKED` when the app runs but its probe times
+  out). osascript failures are classified only by the error number ending the
+  error line (`-1712`, `-1743`, `-600`/`-609`), after the server's own markers,
+  so a collection or path that merely contains such a number is not
+  misclassified. Any failure of a state-changing call — not only a timeout —
+  says it may have partially applied.
 - **One Apple Event at a time.** The bridge runs a single osascript child at a
   time, in FIFO order, across the whole process, so concurrent tool calls queue
   rather than race inside Capture One. A call's timeout starts when its child is

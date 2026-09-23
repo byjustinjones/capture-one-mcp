@@ -81,10 +81,21 @@ export async function healthCheck(): Promise<HealthReport> {
     };
   } catch (err) {
     const e = err as CaptureOneError;
+    // The process exists but a real Apple Event did not come back in time:
+    // that is the "events blocked" case this probe exists to name, whose fix
+    // (click the consent or modal dialog) differs from a crashed app's.
+    const blocked = e.code === "TIMEOUT";
     return {
       processRunning: true,
       eventsReachable: false,
-      problem: { code: e.code ?? "SCRIPT_ERROR", message: e.message },
+      problem: {
+        code: blocked ? "EVENTS_BLOCKED" : e.code ?? "SCRIPT_ERROR",
+        message: blocked
+          ? "Capture One is running but did not answer an Apple Event within 8s. Look for a " +
+            "macOS automation-permission dialog or a Capture One modal dialog and dismiss it; " +
+            "a long import or process can also hold the app."
+          : e.message,
+      },
       ...busyFields(),
     };
   }

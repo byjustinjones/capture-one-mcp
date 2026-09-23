@@ -30,7 +30,7 @@ async function fixture(run) {
             return;
           }
           const probe = !source.includes('const args =');
-          if (probe && state.failProbe) throw Error('-1712');
+          if (probe && state.failProbe) throw Error('execution error: AppleEvent timed out. (-1712)');
           const Application = () => ({ currentDocument: () => state.front ? { id: () => state.front } : null });
           Application.currentApplication = () => ({});
           const result = vm.runInNewContext(source + '\nrun()', { Application, writes: state.writes });

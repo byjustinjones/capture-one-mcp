@@ -119,6 +119,11 @@ domain module.
 - Timeouts translate to actionable text. A pending macOS automation-consent
   dialog blocks **every** Apple Event on the machine until a human clicks it,
   and nothing fails fast; that surfaces as `-1712` and must never leak raw.
+- **Classify by marker, then by error number.** `classifyFailure` checks the
+  server's own `CO_MCP_*` markers first (throw `CO_MCP_WRONG_DOCUMENT: ...` for
+  any document mismatch), then only the `(-NNNN)` that ends osascript's error
+  line. Never substring-search stderr: it contains user data (collection names,
+  paths) and Capture One's own "not allowed" text.
 
 ### 2. Risk tiers gate registration, not execution
 

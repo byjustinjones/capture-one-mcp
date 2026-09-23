@@ -61,7 +61,7 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
     const started = await runJxa<{batchId: string}>(`
       const resolved = resolveTargets({variantIds: [args.variantId]});
       const d = resolved.doc;
-      if (String(d.id()) !== args.documentId) throw new Error("Preview document does not match the front document.");
+      if (String(d.id()) !== args.documentId) throw new Error("CO_MCP_WRONG_DOCUMENT: preview document does not match the front document.");
       if (resolved.targets.length !== 1 || resolved.notFound.length) throw new Error("Preview variant was not found.");
       const current = d.currentRecipe();
       const currentName = current ? String(current.name()) : null;
@@ -107,7 +107,7 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
     do {
       const pending = await runJxa<number>(`
         const d = requireDoc();
-        if (String(d.id()) !== args.documentId) throw new Error("Preview document changed while waiting.");
+        if (String(d.id()) !== args.documentId) throw new Error("CO_MCP_WRONG_DOCUMENT: preview document changed while waiting.");
         return d.jobs().length;
       // Floor the Apple Event budget. Deriving it from the REMAINING wait meant
       // the final poll often started with tens of milliseconds left, so osascript
@@ -157,7 +157,7 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
     try {
       await runJxa(`
         const d = requireDoc();
-        if (String(d.id()) !== args.documentId) throw new Error("Preview document changed before cleanup.");
+        if (String(d.id()) !== args.documentId) throw new Error("CO_MCP_WRONG_DOCUMENT: preview document changed before cleanup.");
         if (d.jobs().length) throw new Error("Queue became active; retaining preview recipe.");
         const rs = d.recipes();
         for (let i=0; i<rs.length; i++) if (String(rs[i].name()) === args.recipeName) co.delete(rs[i]);
