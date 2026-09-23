@@ -48,10 +48,15 @@ export function pinnedDocumentId(): string | null {
 let latchedDocumentId: string | null = null;
 let documentBinding: Promise<string | null> | null = null;
 
+/** The binding probe's own budget. It is one cheap read; inheriting the
+ *  caller's timeout meant a 300 s import could sit 300 s on a stuck probe
+ *  before its body even started. */
+const BINDING_PROBE_MS = 8_000;
+
 /** Bind using a read-only probe before any caller's body can run. Concurrent
  * first calls share the probe; failed/empty probes may be retried safely. A
  * successful binding survives errors in the subsequent operation. */
-async function ensureDocumentBinding(timeoutMs: number): Promise<string | null> {
+async function ensureDocumentBinding(): Promise<string | null> {
   if (!isAutoPin() || latchedDocumentId) return pinnedDocumentId();
   if (!documentBinding) {
     documentBinding = (async () => {
@@ -59,7 +64,7 @@ async function ensureDocumentBinding(timeoutMs: number): Promise<string | null> 
         const co = Application(${JSON.stringify(CAPTURE_ONE_APP)});
         const d = co.currentDocument();
         return JSON.stringify(d ? String(d.id()) : null);
-      }`, timeoutMs);
+      }`, BINDING_PROBE_MS);
       let id: unknown;
       try { id = JSON.parse(raw.trim()); } catch {
         throw new CaptureOneError("Could not decode the document binding response.", "SCRIPT_ERROR");
@@ -72,6 +77,32 @@ async function ensureDocumentBinding(timeoutMs: number): Promise<string | null> 
     })().finally(() => { documentBinding = null; });
   }
   return documentBinding;
+}
+
+/**
+ * Called by co_open_document with the id of the document it just opened.
+ *
+ * Opening is the one call where "the document this call touches" is not the
+ * frontmost one at the start, so the usual bind-before-the-body probe would
+ * latch the PREVIOUS document and then refuse every call against the one the
+ * caller asked to open. openDocument therefore runs without binding and hands
+ * the opened id here: an unbound `auto` server latches to it; a server already
+ * bound (auto or fixed) to a different document refuses.
+ */
+export function bindOpenedDocument(id: string): void {
+  if (!id) throw new CaptureOneError("Capture One did not report the opened document's id.", "SCRIPT_ERROR");
+  const lock = documentLock();
+  if (lock.mode === "auto" && !lock.documentId) {
+    latchedDocumentId = id;
+    return;
+  }
+  if (lock.documentId && lock.documentId !== id) {
+    throw new CaptureOneError(
+      `Opened '${id}', but this server is bound to '${lock.documentId}', so every call against ` +
+        "the newly opened document will be refused. Reconnect the server to work on it.",
+      "WRONG_DOCUMENT",
+    );
+  }
 }
 
 function isAutoPin(): boolean {
@@ -249,7 +280,7 @@ export async function runJxa<T>(body: string, options: RunOptions = {}): Promise
 
   // An observing call reads whatever binding already exists but never creates
   // one, so a health check cannot latch the server to a document.
-  const pin = observeOnly ? pinnedDocumentId() : await ensureDocumentBinding(timeoutMs);
+  const pin = observeOnly ? pinnedDocumentId() : await ensureDocumentBinding();
   const autoUnbound = !observeOnly && isAutoPin() && !pin;
 
   const source = `
@@ -551,7 +582,7 @@ export async function readDocumentSettings(
   settingsObject: string,
   properties: string[],
 ): Promise<Record<string, string | null>> {
-  const pin = await ensureDocumentBinding(defaultTimeoutMs());
+  const pin = await ensureDocumentBinding();
   if (isAutoPin() && !pin) {
     throw new CaptureOneError("No Capture One document is open. Open a session or catalog first.", "NO_DOCUMENT");
   }

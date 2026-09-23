@@ -201,7 +201,9 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
       "current. Requires write access, for two reasons: opening an older document can trigger " +
       "an irreversible format migration, and it changes which document every subsequent variant " +
       "id resolves against — ids are per-document, so switching mid-task can direct later edits " +
-      "at a different catalog.",
+      "at a different catalog. With CAPTURE_ONE_MCP_DOCUMENT=auto and nothing bound yet, the " +
+      "server binds to the document opened here; if it is already bound (or pinned to a fixed " +
+      "id), opening a different document is refused with WRONG_DOCUMENT.",
     {
       path: z
         .string()

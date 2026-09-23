@@ -24,8 +24,6 @@ export interface ServerConfig {
   /** Cap on variants pulled from Capture One in one call. Lowers the schema's
    *  own limit of 500; raising it above 500 has no effect. */
   maxVariants: number;
-  /** Document binding: "off", a fixed document id, or "auto" (first touch). */
-  documentPin: string | null;
 }
 
 function envFlag(name: string): boolean {
@@ -48,7 +46,6 @@ export function loadConfig(): ServerConfig {
     allowData,
     allowDestructive: allowData && envFlag("CAPTURE_ONE_MCP_ALLOW_DESTRUCTIVE"),
     maxVariants: envInt("CAPTURE_ONE_MCP_MAX_VARIANTS", 500),
-    documentPin: process.env["CAPTURE_ONE_MCP_DOCUMENT"]?.trim() || null,
   };
 }
 

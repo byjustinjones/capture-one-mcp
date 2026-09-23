@@ -90,7 +90,8 @@ export async function getRecipe(name: string): Promise<Record<string, unknown>> 
 /** Style and preset names. The dictionary exposes names only -- there is no
  *  scriptable way to read a style's contents. */
 export async function listStyles(): Promise<string[]> {
-  return runJxa<string[]>(`return co.availableStyles().map(String);`);
+  // Styles are application-wide, not per-document: no binding.
+  return runJxa<string[]>(`return co.availableStyles().map(String);`, { observeOnly: true });
 }
 
 export async function listKeywords(limit: number): Promise<{ total: number; keywords: string[] }> {

@@ -30,7 +30,7 @@ test('MCP processing honors policy and reports submission errors end to end', as
   try {
     const { createServer } = await import('../dist/server.js');
     async function clientFor(config, body) {
-      const server = createServer({ maxVariants: 500, documentPin: null, ...config });
+      const server = createServer({ maxVariants: 500, ...config });
       const client = new Client({ name: 'integration-test', version: '1' });
       const [a, b] = InMemoryTransport.createLinkedPair();
       await Promise.all([server.connect(a), client.connect(b)]);

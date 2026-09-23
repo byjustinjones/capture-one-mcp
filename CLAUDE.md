@@ -161,6 +161,13 @@ Without that flag `runJxa` binds unconditionally, so the tool clients are told t
 call first when anything times out latched the server onto whatever document
 happened to be frontmost. `tests/document-pin.test.mjs` guards it.
 
+The same flag goes on every **document-agnostic** call — `listDocuments`,
+`listStyles` — and a structural test fails any `runJxa` body that never calls
+`requireDoc`/`resolveTargets`/`resolveLayer` without it. `openDocument` also
+runs `observeOnly` (binding first would latch the *previous* front document)
+and then calls `bindOpenedDocument` with the id it opened; a bound server
+refuses to open anything else. The binding probe has its own fixed 8 s budget.
+
 The candidate-workflow tools (`co_create_candidates`, `co_render_preview`,
 `co_compare_variants`) additionally require an explicit `document_id` argument
 and re-check it, so they are safe even with binding off.

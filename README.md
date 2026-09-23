@@ -86,7 +86,11 @@ These tools are always available; none of them modifies image data.
 
 `co_open_document` is in the write tier rather than the read tier: opening an
 older document can trigger an irreversible format migration, and it changes
-which document later variant ids resolve against.
+which document later variant ids resolve against. With document binding on (see
+[Binding to a document](#binding-to-a-document)), an unbound `auto` server binds
+to the document it opens — never to whatever was frontmost before — and a bound
+server (auto or a fixed id) refuses to open any other document, with
+`WRONG_DOCUMENT`.
 
 `co_get_variant` reads all registered scalar adjustments on the variant and its
 layers; `co_list_layers` reads those same settings on each layer. Adjustment keys
@@ -257,7 +261,9 @@ different session or catalog** — in Claude Code, `/mcp` → reconnect.
 A document id is the document's own folder path, e.g.
 `/Volumes/Photos/a session folder`. `co_status` reports the current
 binding and warns when it does not match the front document. Note that
-`co_status` itself does not bind — a health check should not claim the server.
+`co_status` itself does not bind — a health check should not claim the server —
+and neither do `co_list_documents` and `co_list_styles`, which are about the app
+rather than one document. `co_open_document` binds to the document it opened.
 
 Tools above their permitted risk level are not registered at all, so a blocked
 tool is invisible to the model rather than present-and-failing.

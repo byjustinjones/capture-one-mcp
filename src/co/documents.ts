@@ -1,4 +1,5 @@
-import { runJxa } from "../jxa/bridge.js";
+import { dirname } from "node:path";
+import { bindOpenedDocument, CaptureOneError, documentLock, runJxa } from "../jxa/bridge.js";
 
 export interface DocumentSummary {
   name: string;
@@ -25,7 +26,10 @@ export async function listDocuments(): Promise<DocumentSummary[]> {
       });
     }
     return out;
-  `);
+  `,
+  // Lists every open document, so it is about none of them in particular and
+  // must not latch the auto-pin onto whichever happens to be frontmost.
+  { observeOnly: true });
 }
 
 export async function getDocument(): Promise<Record<string, unknown>> {
@@ -72,7 +76,23 @@ export async function getDocument(): Promise<Record<string, unknown>> {
 }
 
 export async function openDocument(path: string): Promise<DocumentSummary> {
-  return runJxa<DocumentSummary>(
+  // A document's id is its folder path, which for a .cosessiondb or a
+  // catalog's .cocatalogdb is the folder containing that file. A bound server
+  // refuses to open anything else BEFORE opening it: opening changes the front
+  // document, and every later call would then be refused anyway -- after an
+  // irreversible format migration may already have run. The post-open check in
+  // bindOpenedDocument is the authoritative one; this only fails early.
+  const lock = documentLock();
+  const expectedId = dirname(path);
+  if (lock.documentId && lock.documentId.replace(/\/+$/, "") !== expectedId) {
+    throw new CaptureOneError(
+      `Refusing to open '${path}': this server is bound to '${lock.documentId}' ` +
+        `(${lock.mode === "fixed" ? "CAPTURE_ONE_MCP_DOCUMENT" : "auto binding"}), and opening another ` +
+        "document would direct later variant ids at it. Reconnect the server to switch documents.",
+      "WRONG_DOCUMENT",
+    );
+  }
+  const opened = await runJxa<DocumentSummary>(
     `
     co.open(Path(args.path));
     delay(1);
@@ -84,7 +104,11 @@ export async function openDocument(path: string): Promise<DocumentSummary> {
     };
     `,
     // Opening a catalog can be slow: Capture One may need to build previews or
-    // prompt to migrate an older document format.
-    { args: { path }, timeoutMs: 120_000, mutating: true },
+    // prompt to migrate an older document format. observeOnly: binding BEFORE
+    // opening would latch the previously frontmost document; the opened one is
+    // bound below instead.
+    { args: { path }, timeoutMs: 120_000, mutating: true, observeOnly: true },
   );
+  bindOpenedDocument(opened.id);
+  return opened;
 }

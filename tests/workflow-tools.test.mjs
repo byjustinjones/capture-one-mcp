@@ -5,7 +5,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createServer, previewToolResult } from '../dist/server.js';
 
 for (const allowData of [false, true]) test(`workflow tool policy with data writes ${allowData}`, async () => {
-  const server = createServer({ allowData, allowDestructive: false, maxVariants: 500, documentPin: null });
+  const server = createServer({ allowData, allowDestructive: false, maxVariants: 500 });
   const client = new Client({name:'workflow-test',version:'1'});
   const [a,b] = InMemoryTransport.createLinkedPair();
   await Promise.all([server.connect(a),client.connect(b)]);
