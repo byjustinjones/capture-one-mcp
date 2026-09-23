@@ -128,7 +128,11 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
     "read",
     "Health and context for Capture One: whether it is running, whether Apple Events are " +
       "actually getting through, the reported app version, the open document, and which write " +
-      "tiers are enabled. Call this first when anything else times out.",
+      "tiers are enabled. Call this first when anything else times out. Also reports `busy`: " +
+      "after a state-changing call times out, every further state-changing call is refused with " +
+      "error BUSY (reads still work) until this tool's probe finds Capture One responding again, " +
+      "which clears it. Clearing it does not mean the timed-out call took effect — inspect state " +
+      "before retrying.",
     {},
     async () => {
       const health = await healthCheck();

@@ -66,7 +66,7 @@ These tools are always available; none of them modifies image data.
 
 | Tool | What it does |
 | --- | --- |
-| `co_status` | Running state, whether Apple Events are actually getting through, version/tier, open document. Call this first if anything times out. |
+| `co_status` | Running state, whether Apple Events are actually getting through, version/tier, open document, and `busy`. Call this first if anything times out; it is also what clears `busy`. |
 | `co_list_documents` | Open sessions and catalogs, and which is frontmost |
 | `co_get_document` | Paths, session folders, naming tokens, counters, queue depth |
 | `co_list_collections` | Albums, projects, groups, smart albums, folders, favorites |
@@ -286,6 +286,18 @@ than assumed:
   machine until someone clicks it. Nothing fails fast; calls just sit until the
   Apple Event timeout (`-1712`). `src/jxa/bridge.ts` imposes its own wall-clock
   budget and translates this into an actionable message.
+- **One Apple Event at a time.** The bridge runs a single osascript child at a
+  time, in FIFO order, across the whole process, so concurrent tool calls queue
+  rather than race inside Capture One. A call's timeout starts when its child is
+  spawned, not while it waits its turn.
+- **`BUSY` after a state-changing timeout.** When a call that changes state (or
+  a read inside an operation that already submitted work) times out, Capture One
+  may still be carrying it out. The server then refuses every further
+  state-changing call with error `BUSY`; reads still work. `co_status` probes
+  the app with a fixed 8-second `app version` call and, if it answers, clears
+  `busy` and reports what it cleared in `busyCleared`. That only proves the app
+  responds again — inspect the affected variants, queue or output files before
+  retrying the call that timed out.
 
 ## Notes on the variant model
 

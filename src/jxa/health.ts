@@ -1,4 +1,4 @@
-import { CaptureOneError, isRunning, runJxa } from "./bridge.js";
+import { busyStatus, CaptureOneError, clearBusy, isRunning, runJxa } from "./bridge.js";
 
 export interface HealthReport {
   processRunning: boolean;
@@ -9,6 +9,18 @@ export interface HealthReport {
    *  document pin is compared against; `path` is the folder CONTAINING it. */
   document?: { id: string; name: string; kind: "session" | "catalog"; path: string };
   problem?: { code: string; message: string };
+  /** True while state-changing calls are refused with BUSY because an earlier
+   *  one timed out. `busyReason` says which timeout and when. */
+  busy: boolean;
+  busyReason?: string;
+  /** Present when THIS probe cleared a busy state: the app answers again, but
+   *  the timed-out call may or may not have taken effect. */
+  busyCleared?: { reason: string; since: string; note: string };
+}
+
+function busyFields(): Pick<HealthReport, "busy" | "busyReason"> {
+  const b = busyStatus();
+  return b.busy ? { busy: true, busyReason: `${b.reason} (since ${b.since})` } : { busy: false };
 }
 
 /**
@@ -23,6 +35,7 @@ export async function healthCheck(): Promise<HealthReport> {
       processRunning: false,
       eventsReachable: false,
       problem: { code: "NOT_RUNNING", message: "Capture One is not running. Launch it first." },
+      ...busyFields(),
     };
   }
 
@@ -43,11 +56,28 @@ export async function healthCheck(): Promise<HealthReport> {
       { timeoutMs: 8_000, observeOnly: true },
     );
 
+    // The app answered a real Apple Event within the fixed budget, so it is no
+    // longer stuck on the call that timed out. That is all this proves: the
+    // earlier write may have completed, partially applied, or never started.
+    const cleared = clearBusy();
     return {
       processRunning: true,
       eventsReachable: true,
       appVersion: info.appVersion,
       ...(info.doc ? { document: info.doc } : {}),
+      busy: false,
+      ...(cleared
+        ? {
+            busyCleared: {
+              ...cleared,
+              note:
+                "Capture One is responding again, so state-changing calls are allowed. The call " +
+                "that timed out may have completed, partially applied, or not run at all: read " +
+                "back the affected variants (or the processing queue and output files) before " +
+                "retrying it.",
+            },
+          }
+        : {}),
     };
   } catch (err) {
     const e = err as CaptureOneError;
@@ -55,6 +85,7 @@ export async function healthCheck(): Promise<HealthReport> {
       processRunning: true,
       eventsReachable: false,
       problem: { code: e.code ?? "SCRIPT_ERROR", message: e.message },
+      ...busyFields(),
     };
   }
 }

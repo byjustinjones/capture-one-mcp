@@ -40,7 +40,7 @@ const adjust = await import('../dist/co/adjust.js');
 const documents = await import('../dist/co/documents.js');
 const collections = await import('../dist/co/collections.js');
 const processing = await import('../dist/co/process.js');
-const { CaptureOneError } = await import('../dist/jxa/bridge.js');
+const { CaptureOneError, busyStatus, clearBusy } = await import('../dist/jxa/bridge.js');
 const target = { variantIds: ['1'] };
 const ref = { variantId: '1', layerIndex: 1 };
 const mutations = {
@@ -80,6 +80,10 @@ for (const mode of ['killed', 'event']) {
         return true;
       });
       assert.equal(scriptsSent - before, 1, 'does not automatically retry a mutation');
+      // A mutating timeout leaves the server busy, refusing further writes until
+      // co_status sees the app respond. Clear it so the next case starts fresh.
+      assert.equal(busyStatus().busy, true, 'a mutating timeout marks the server busy');
+      clearBusy();
     });
   }
   test(`read-only call retains ordinary retry guidance for ${mode} timeout`, async () => {
@@ -90,5 +94,6 @@ for (const mode of ['killed', 'event']) {
       assert.doesNotMatch(error.message, /MUTATES/);
       return true;
     });
+    assert.equal(busyStatus().busy, false, 'a read timeout does not mark the server busy');
   });
 }

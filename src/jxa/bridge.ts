@@ -104,6 +104,7 @@ export type CaptureOneErrorCode =
   | "TIMEOUT"
   | "NO_DOCUMENT"
   | "WRONG_DOCUMENT"
+  | "BUSY"
   | "SCRIPT_ERROR";
 
 export interface RunOptions {
@@ -155,6 +156,60 @@ const RETRY_IN_FLIGHT =
   "be running or already finished. Inspect the batch queue and the output files " +
   "before retrying; retrying blindly can process everything a second time.";
 
+/**
+ * One Apple Event at a time, process-wide.
+ *
+ * MCP clients may issue tool calls concurrently, and every call used to spawn
+ * its own osascript immediately. Capture One services Apple Events on one
+ * thread, so two in flight at once only queue inside the app, where our
+ * wall-clock timeouts keep running: a read queued behind a slow write timed out
+ * having done nothing, and two writes to the same variant could interleave
+ * their read-backs. A FIFO chain here makes ordering explicit. Each timeout
+ * starts when the child is spawned, not when the call is queued, so waiting
+ * for the lock never eats into a call's own budget.
+ */
+let appleEventTail: Promise<unknown> = Promise.resolve();
+function serialized<T>(work: () => Promise<T>): Promise<T> {
+  const run = appleEventTail.then(work, work);
+  appleEventTail = run.catch(() => undefined);
+  return run;
+}
+
+/**
+ * Set when a state-changing call (or a read inside an operation that already
+ * submitted work) times out. The timeout killed only our child; Capture One may
+ * still be applying that write, so a follow-up write sent now can land on top
+ * of it -- or be the blind retry the timeout message warns against. While
+ * busy, every mutating or in-flight call is refused with BUSY; reads still run,
+ * because reading is how the caller finds out what happened. Only a successful
+ * liveness probe (co_status) clears it.
+ */
+let busyState: { reason: string; since: string } | null = null;
+
+export function busyStatus(): { busy: boolean; reason?: string; since?: string } {
+  return busyState ? { busy: true, ...busyState } : { busy: false };
+}
+
+/** Clears the busy flag. Only a liveness probe that round-tripped an Apple
+ *  Event within its fixed budget may call this -- see healthCheck. Returns the
+ *  state that was cleared, if any, so the caller can report it. */
+export function clearBusy(): { reason: string; since: string } | null {
+  const was = busyState;
+  busyState = null;
+  return was;
+}
+
+function busyError(): CaptureOneError {
+  return new CaptureOneError(
+    "Refusing a state-changing call: an earlier one timed out and Capture One may still be " +
+      `working on it (${busyState?.reason ?? "unknown"}, since ${busyState?.since ?? "unknown"}). ` +
+      "Call co_status first -- it probes whether Capture One is responding and clears this " +
+      "state when it is -- then inspect the document (the affected variants, the processing " +
+      "queue, output files) to see whether that earlier call took effect before retrying anything.",
+    "BUSY",
+  );
+}
+
 /** Fallback budget for calls that do not specify one. CAPTURE_ONE_MCP_TIMEOUT_MS
  *  was previously loaded into config and never read by anything; the bridge is
  *  where it has to apply, so it is read here. */
@@ -177,6 +232,10 @@ export async function runJxa<T>(body: string, options: RunOptions = {}): Promise
     mutating = false, mutationInFlight = false, observeOnly = false,
   } = options;
   const retryAdvice = mutating ? RETRY_MUTATING : mutationInFlight ? RETRY_IN_FLIGHT : RETRY_SAFE;
+  const mutation = mutating || mutationInFlight;
+  // Refuse before the binding probe as well as under the lock (below): there is
+  // no point sending even a read on behalf of a call that will be refused.
+  if (mutation && busyState) throw busyError();
 
   // An observing call reads whatever binding already exists but never creates
   // one, so a health check cannot latch the server to a document.
@@ -285,7 +344,7 @@ export async function runJxa<T>(body: string, options: RunOptions = {}): Promise
     }
   `;
 
-  const stdout = await execOsascript(source, timeoutMs, "JavaScript", retryAdvice);
+  const stdout = await execOsascript(source, timeoutMs, "JavaScript", retryAdvice, mutation);
 
   let parsed: { ok: true; value: T; documentId?: string | null };
   try {
@@ -305,8 +364,12 @@ function execOsascript(
   timeoutMs: number,
   language: "JavaScript" | "AppleScript" = "JavaScript",
   retryAdvice: string = RETRY_SAFE,
+  mutation = false,
 ): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return serialized(() => new Promise<string>((resolve, reject) => {
+    // Re-checked here, holding the lock: a write queued behind the one that
+    // timed out must be refused when its turn comes, not when it was queued.
+    if (mutation && busyState) return reject(busyError());
     // The script goes in on STDIN ("-"), not as an -e argv element.
     //
     // argv cannot carry a NUL byte -- execFile throws ERR_INVALID_ARG_VALUE
@@ -326,6 +389,12 @@ function execOsascript(
         // execFile reports its own timeout via `killed`, and the Apple Event
         // layer reports -1712. Both mean "nothing came back in time".
         if ((error as NodeJS.ErrnoException & { killed?: boolean }).killed || text.includes("-1712")) {
+          if (mutation) {
+            busyState = {
+              reason: `a state-changing call did not respond within ${Math.round(timeoutMs / 1000)}s`,
+              since: new Date().toISOString(),
+            };
+          }
           return reject(
             new CaptureOneError(
               `Capture One did not respond within ${Math.round(timeoutMs / 1000)}s. ` +
@@ -397,7 +466,7 @@ function execOsascript(
     // error event that takes the process down.
     child.stdin?.on("error", () => {});
     child.stdin?.end(source);
-  });
+  }));
 }
 
 function firstLine(text: string): string {

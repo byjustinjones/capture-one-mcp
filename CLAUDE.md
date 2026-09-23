@@ -25,7 +25,7 @@ whoever is *changing* the code.
 npm run build        # tsc -> dist/ (gitignored)
 npm run typecheck    # tsc --noEmit
 npm run verify       # typecheck + parse every embedded JXA block (42 currently)
-npm test             # build + node --test tests/*.test.mjs (143 currently)
+npm test             # build + node --test tests/*.test.mjs (146 currently)
 ```
 
 `npm run verify && npm test` is the gate for any change. Both are hermetic:
@@ -110,6 +110,12 @@ domain module.
   *our* osascript child, not the Apple Event — Capture One carries on
   processing/importing/renaming. `mutating` is what makes the timeout message
   say "inspect state before retrying" instead of "retry".
+- **One osascript at a time.** `execOsascript` runs behind a process-wide FIFO
+  lock; do not spawn a child any other way. After a `mutating` or
+  `mutationInFlight` call times out the bridge is **busy**: every further
+  mutating/in-flight call is refused with `BUSY` (reads still run) until
+  `healthCheck`'s fixed-budget `app version` probe succeeds and calls
+  `clearBusy`. Tests that provoke a mutating timeout on purpose must clear it.
 - Timeouts translate to actionable text. A pending macOS automation-consent
   dialog blocks **every** Apple Event on the machine until a human clicks it,
   and nothing fails fast; that surfaces as `-1712` and must never leak raw.
