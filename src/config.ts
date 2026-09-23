@@ -24,7 +24,13 @@ export interface ServerConfig {
   /** Cap on variants pulled from Capture One in one call. Lowers the schema's
    *  own limit of 500; raising it above 500 has no effect. */
   maxVariants: number;
+  /** Cap on variants one EDITING call may touch, whether named in variant_ids
+   *  or taken from the current selection. Over the cap is refused before any
+   *  write, never truncated. */
+  maxTargets: number;
 }
+
+export const DEFAULT_MAX_TARGETS = 500;
 
 function envFlag(name: string): boolean {
   const v = process.env[name];
@@ -46,6 +52,7 @@ export function loadConfig(): ServerConfig {
     allowData,
     allowDestructive: allowData && envFlag("CAPTURE_ONE_MCP_ALLOW_DESTRUCTIVE"),
     maxVariants: envInt("CAPTURE_ONE_MCP_MAX_VARIANTS", 500),
+    maxTargets: envInt("CAPTURE_ONE_MCP_MAX_TARGETS", DEFAULT_MAX_TARGETS),
   };
 }
 

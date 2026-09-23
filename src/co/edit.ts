@@ -19,12 +19,18 @@ export type MetadataField = keyof typeof METADATA_FIELDS;
 export interface Target {
   variantIds?: string[];
   useCurrentSelection?: boolean;
+  /** Refuse (never truncate) a target set larger than this; see resolveTargets. */
+  maxTargets?: number;
 }
 
 export interface EditResult {
-  affected: { id: string; name: string; extension: string; changes: Record<string, unknown> }[];
+  /** "incomplete" when a variant threw partway: see `error`, `unattemptedIds`. */
+  status: "complete" | "incomplete";
+  affected: { id: string; name: string; extension: string; changes?: Record<string, unknown>; error?: string }[];
   notFound: string[];
   count: number;
+  unattemptedIds?: string[];
+  guidance?: string;
 }
 
 /** Rating, color tag and pick flag. */
@@ -40,35 +46,44 @@ export async function setFlags(
     const notFound = resolved.notFound;
     const affected = [];
     const specs = [["rating", "rating"], ["colorTag", "colorTag"], ["pick", "pick"]];
+    let stopped = null;
     for (let t = 0; t < targets.length; t++) {
-      const v = targets[t];
-      const changes = {};
-      for (let f = 0; f < specs.length; f++) {
-        const key = specs[f][0];
-        if (args.flags[key] === undefined) continue;
-        // Read the old value first: the tool documents that it reports what the
-        // value was, which is the only record a caller has for reverting.
-        let previous = null;
-        try { previous = v[key](); } catch (e) {}
-        let err = null;
-        try { v[key] = args.flags[key]; } catch (e) { err = String(e).replace(/^Error:\\s*/, ""); }
-        let actual = null;
-        let readOk = false;
-        try { actual = v[key](); readOk = true; } catch (e) { err = err || "read-back failed: " + String(e); }
-        const entry = {
-          previous: previous,
-          requested: args.flags[key],
-          actual: actual,
-          matched: readOk && actual === args.flags[key],
-        };
-        if (err) entry.note = err;
-        changes[key] = entry;
+      try {
+        const v = targets[t];
+        const changes = {};
+        for (let f = 0; f < specs.length; f++) {
+          const key = specs[f][0];
+          if (args.flags[key] === undefined) continue;
+          // Read the old value first: the tool documents that it reports what the
+          // value was, which is the only record a caller has for reverting.
+          let previous = null;
+          try { previous = v[key](); } catch (e) {}
+          let err = null;
+          try { v[key] = args.flags[key]; } catch (e) { err = String(e).replace(/^Error:\\s*/, ""); }
+          let actual = null;
+          let readOk = false;
+          try { actual = v[key](); readOk = true; } catch (e) { err = err || "read-back failed: " + String(e); }
+          const entry = {
+            previous: previous,
+            requested: args.flags[key],
+            actual: actual,
+            matched: readOk && actual === args.flags[key],
+          };
+          if (err) entry.note = err;
+          changes[key] = entry;
+        }
+        const info = describeVariant(v);
+        info.changes = changes;
+        affected.push(info);
+      } catch (e) {
+        stopped = stopBatch(targets, t, e);
+        affected.push(stopped.entry);
+        break;
       }
-      const info = describeVariant(v);
-      info.changes = changes;
-      affected.push(info);
     }
-    return { affected: affected, notFound: notFound, count: affected.length };
+    const out = { status: stopped ? "incomplete" : "complete", affected: affected, notFound: notFound, count: affected.length };
+    if (stopped) { out.unattemptedIds = stopped.unattemptedIds; out.guidance = stopped.guidance; }
+    return out;
     `,
     { args: { target, flags }, timeoutMs: 120_000, mutating: true },
   );
@@ -102,39 +117,48 @@ export async function setMetadata(
     const notFound = resolved.notFound;
     const affected = [];
     const props = Object.keys(args.fields);
+    let stopped = null;
     for (let t = 0; t < targets.length; t++) {
-      const v = targets[t];
-      const changes = {};
-      for (let p = 0; p < props.length; p++) {
-        const key = props[p];
-        const want = args.fields[key];
-        // Read the old value first: an empty string CLEARS a field, overwriting
-        // whatever was there, and this is the caller's only record of it.
-        let previous = null;
-        try { previous = String(v[key]()); } catch (e) {}
-        // Per-field, so one rejected write does not abandon the call with earlier
-        // fields already written and nothing reported about what landed.
-        let err = null;
-        try { v[key] = want; } catch (e) { err = String(e).replace(/^Error:\s*/, ""); }
-        // Read back rather than echoing the request. Echoing reported a write as
-        // applied even when Capture One had stored something else or nothing.
-        let actual = null;
-        let readOk = false;
-        try { actual = String(v[key]()); readOk = true; } catch (e) { err = err || "read-back failed: " + String(e); }
-        const entry = {
-          previous: previous,
-          requested: want,
-          actual: actual,
-          matched: readOk && actual === want,
-        };
-        if (err) entry.note = err;
-        changes[args.fieldFor[key]] = entry;
+      try {
+        const v = targets[t];
+        const changes = {};
+        for (let p = 0; p < props.length; p++) {
+          const key = props[p];
+          const want = args.fields[key];
+          // Read the old value first: an empty string CLEARS a field, overwriting
+          // whatever was there, and this is the caller's only record of it.
+          let previous = null;
+          try { previous = String(v[key]()); } catch (e) {}
+          // Per-field, so one rejected write does not abandon the call with earlier
+          // fields already written and nothing reported about what landed.
+          let err = null;
+          try { v[key] = want; } catch (e) { err = String(e).replace(/^Error:\s*/, ""); }
+          // Read back rather than echoing the request. Echoing reported a write as
+          // applied even when Capture One had stored something else or nothing.
+          let actual = null;
+          let readOk = false;
+          try { actual = String(v[key]()); readOk = true; } catch (e) { err = err || "read-back failed: " + String(e); }
+          const entry = {
+            previous: previous,
+            requested: want,
+            actual: actual,
+            matched: readOk && actual === want,
+          };
+          if (err) entry.note = err;
+          changes[args.fieldFor[key]] = entry;
+        }
+        const info = describeVariant(v);
+        info.changes = changes;
+        affected.push(info);
+      } catch (e) {
+        stopped = stopBatch(targets, t, e);
+        affected.push(stopped.entry);
+        break;
       }
-      const info = describeVariant(v);
-      info.changes = changes;
-      affected.push(info);
     }
-    return { affected: affected, notFound: notFound, count: affected.length };
+    const out = { status: stopped ? "incomplete" : "complete", affected: affected, notFound: notFound, count: affected.length };
+    if (stopped) { out.unattemptedIds = stopped.unattemptedIds; out.guidance = stopped.guidance; }
+    return out;
     `,
     { args: { target, fields: mapped, fieldFor }, timeoutMs: 120_000, mutating: true },
   );
@@ -189,7 +213,9 @@ export async function applyKeyword(target: Target, keyword: string): Promise<Edi
       info.changes = { keywordApplied: args.keyword };
       affected.push(info);
     }
-    return { affected: affected, notFound: notFound, count: affected.length };
+    // One Apple Event applies to every target at once, so there is no
+    // per-variant partial state to report: it either threw or it ran.
+    return { status: "complete", affected: affected, notFound: notFound, count: affected.length };
     `,
     { args: { target, keyword }, timeoutMs: 120_000, mutating: true },
   );
@@ -222,19 +248,26 @@ export async function removeKeyword(target: Target, keyword: string): Promise<
     const wantedName = String(args.keyword).toLowerCase();
     const affected = [];
 
+    let stopped = null;
     for (let t = 0; t < targets.length; t++) {
-      const v = targets[t];
-      const kws = v.keywords();
-      let removed = false;
-      for (let k = kws.length - 1; k >= 0; k--) {
-        if (String(kws[k].name()).toLowerCase() === wantedName) {
-          co.delete(kws[k]);
-          removed = true;
+      try {
+        const v = targets[t];
+        const kws = v.keywords();
+        let removed = false;
+        for (let k = kws.length - 1; k >= 0; k--) {
+          if (String(kws[k].name()).toLowerCase() === wantedName) {
+            co.delete(kws[k]);
+            removed = true;
+          }
         }
+        const info = describeVariant(v);
+        info.changes = { keywordRemoved: removed ? args.keyword : null };
+        affected.push(info);
+      } catch (e) {
+        stopped = stopBatch(targets, t, e);
+        affected.push(stopped.entry);
+        break;
       }
-      const info = describeVariant(v);
-      info.changes = { keywordRemoved: removed ? args.keyword : null };
-      affected.push(info);
     }
 
     let survives = false;
@@ -243,10 +276,13 @@ export async function removeKeyword(target: Target, keyword: string): Promise<
       if (String(after[i].name()).toLowerCase() === wantedName) { survives = true; break; }
     }
 
-    return {
+    const out = {
+      status: stopped ? "incomplete" : "complete",
       affected: affected, notFound: notFound, count: affected.length,
       documentKeywordSurvives: survives,
     };
+    if (stopped) { out.unattemptedIds = stopped.unattemptedIds; out.guidance = stopped.guidance; }
+    return out;
     `,
     { args: { target, keyword }, timeoutMs: 120_000, mutating: true },
   );

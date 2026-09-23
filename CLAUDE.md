@@ -195,6 +195,14 @@ Each takes either explicit `variant_ids` or `use_current_selection: true`
 resolve in `notFound` rather than silently doing less, and returns exactly what
 it changed.
 
+Writing tools use `toEditTarget`, which adds `maxTargets`; `resolveTargets`
+refuses more than that (explicit ids or selection) with `CO_MCP_REFUSED:` before
+the body writes anything — that marker also suppresses the "may have partially
+applied" advice, so only use it for checks that precede every write. Per-variant
+loops wrap each variant in `try` and call `stopBatch` on a throw: record the
+entry with `error`, stop, and return `status: "incomplete"` plus
+`unattemptedIds`, as `createCandidates` does.
+
 ### 6. Bulk reads, because access pattern dominates
 
 Each property access is one Apple Event. On the 138-variant test session,

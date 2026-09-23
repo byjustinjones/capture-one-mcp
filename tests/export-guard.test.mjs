@@ -102,7 +102,7 @@ findHandler(serverSource);
 for (const allowDestructive of [false, true]) {
   test(`MCP handler uses server destructive setting ${allowDestructive}`, async () => {
     const observed = [];
-    const handler = new Function('config', 'processVariants', 'toTarget', `return (${handlerSource});`)(
+    const handler = new Function('config', 'processVariants', 'toEditTarget', `return (${handlerSource});`)(
       {allowDestructive}, (...args) => observed.push(args), a => ({variantIds: a.variant_ids}),
     );
     await handler({variant_ids: ['1'], recipe: 'Overwrite', wait_seconds: 0, allowOverwrite: !allowDestructive});

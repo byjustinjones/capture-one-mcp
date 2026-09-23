@@ -329,13 +329,25 @@ export async function runJxa<T>(body: string, options: RunOptions = {}): Promise
         var targets = [];
         var notFound = [];
 
+        // A cap on how many variants one editing call may touch. Checked here,
+        // before the caller's body writes anything, and refused rather than
+        // truncated: silently editing the first N of a larger selection is the
+        // "did less than asked without saying so" failure.
+        var cap = target && target.maxTargets;
+        function refuseOverCap(n, what) {
+          throw new Error("CO_MCP_REFUSED: " + what + " has " + n + " variants, over the limit of " + cap +
+            " per editing call (CAPTURE_ONE_MCP_MAX_TARGETS). Nothing was changed. Split the work into " +
+            "smaller batches of explicit variant_ids.");
+        }
         if (target && target.useCurrentSelection) {
           var sel = co.selectedVariants();
+          if (cap && sel.length > cap) refuseOverCap(sel.length, "The current selection");
           for (var s = 0; s < sel.length; s++) targets.push(sel[s]);
           if (!targets.length) throw new Error("Nothing is selected in Capture One.");
         } else {
           var wanted = (target && target.variantIds) || [];
           if (!wanted.length) throw new Error("Provide variant_ids, or set use_current_selection.");
+          if (cap && wanted.length > cap) refuseOverCap(wanted.length, "variant_ids");
           var ids = spec.id();
           // A bare object would resolve "__proto__"/"constructor"/"toString" to
           // inherited members and push undefined as a target.
@@ -356,6 +368,30 @@ export async function runJxa<T>(body: string, options: RunOptions = {}): Promise
           }
         }
         return { doc: d, spec: spec, targets: targets, notFound: notFound };
+      }
+
+      // A throw partway through a per-variant batch write. Earlier variants are
+      // already written, so failing the whole call would lose the only report
+      // of what changed. The caller records this entry, stops, and returns
+      // status "incomplete" -- the model createCandidates established.
+      function stopBatch(targets, t, e) {
+        var entry;
+        try { entry = describeVariant(targets[t]); } catch (e2) {
+          entry = { id: null };
+          try { entry.id = String(targets[t].id()); } catch (e3) {}
+        }
+        entry.error = String(e).replace(/^Error:\\s*/, "");
+        var rest = [];
+        for (var r = t + 1; r < targets.length; r++) {
+          try { rest.push(String(targets[r].id())); } catch (e3) { rest.push(null); }
+        }
+        return {
+          entry: entry,
+          unattemptedIds: rest,
+          guidance: "Stopped at variant " + entry.id + ": " + entry.error + ". Earlier entries were " +
+            "written as reported; the failed variant may be partially changed; unattemptedIds were not " +
+            "touched. Inspect the failed variant before retrying, and retry only it and the unattempted ids.",
+        };
       }
 
       // Layers have no id, so they are addressed by position within a variant.
@@ -417,8 +453,8 @@ function execOsascript(
     // some of its writes landed -- a batch that threw on its fifth variant has
     // edited four. Timeouts already say so; every other failure of a mutating
     // call has to as well, or the model reads "error" as "nothing happened".
-    const fail = (e: CaptureOneError) =>
-      reject(mutation && e.code !== "TIMEOUT" ? withPartialAdvice(e, retryAdvice) : e);
+    const fail = (e: CaptureOneError, nothingWritten = false) =>
+      reject(mutation && !nothingWritten && e.code !== "TIMEOUT" ? withPartialAdvice(e, retryAdvice) : e);
     // The script goes in on STDIN ("-"), not as an -e argv element.
     //
     // argv cannot carry a NUL byte -- execFile throws ERR_INVALID_ARG_VALUE
@@ -441,7 +477,8 @@ function execOsascript(
             since: new Date().toISOString(),
           };
         }
-        return fail(e);
+        // CO_MCP_REFUSED is thrown only by checks that run before any write.
+        return fail(e, text.includes("CO_MCP_REFUSED"));
       },
     );
 
@@ -478,6 +515,13 @@ function classifyFailure(text: string, killed: boolean, timeoutMs: number, retry
         " Refusing to act: variant ids are only meaningful within the document they came " +
         "from, so this could edit the wrong catalog.",
       "WRONG_DOCUMENT",
+    );
+  }
+  const refused = text.split("\n").find((l) => l.includes("CO_MCP_REFUSED"));
+  if (refused !== undefined) {
+    return new CaptureOneError(
+      stripErrorNumber(refused.replace(/^.*CO_MCP_REFUSED:?\s*/, "")),
+      "SCRIPT_ERROR",
     );
   }
   if (text.includes("CO_MCP_NO_DOCUMENT")) {

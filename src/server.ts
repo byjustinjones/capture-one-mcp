@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { CaptureOneError, documentLock } from "./jxa/bridge.js";
 import { healthCheck } from "./jxa/health.js";
-import { isAllowed, loadConfig, type RiskLevel, type ServerConfig } from "./config.js";
+import { DEFAULT_MAX_TARGETS, isAllowed, loadConfig, type RiskLevel, type ServerConfig } from "./config.js";
 import { getDocument, listDocuments, openDocument } from "./co/documents.js";
 import { listCollections, setCurrentCollection } from "./co/collections.js";
 import { createCandidates } from "./co/candidates.js";
@@ -64,6 +64,18 @@ function fail(err: unknown): ToolResult {
   return { content: [{ type: "text", text: JSON.stringify(payload, null, 2) }], isError: true };
 }
 
+/** Editing tools whose targets count against the per-call cap. */
+const CAPPED_TOOLS = new Set([
+  "co_set_flags", "co_set_metadata", "co_apply_keyword", "co_remove_keyword", "co_adjust_variants",
+  "co_create_layer", "co_create_people_mask", "co_process_variants", "co_export_originals",
+  "co_batch_rename",
+]);
+/** Tools that write variant by variant, and so can stop partway with a report. */
+const PARTIAL_BATCH_TOOLS = new Set([
+  "co_set_flags", "co_set_metadata", "co_remove_keyword", "co_adjust_variants", "co_create_layer",
+  "co_create_people_mask",
+]);
+
 /** Editing tools address variants either explicitly or via the app's current
  *  selection. Nothing applies to "everything" implicitly. */
 function toTarget(a: {
@@ -83,6 +95,24 @@ function toTarget(a: {
 export function createServer(config: ServerConfig = loadConfig()): McpServer {
   const server = new McpServer({ name: SERVER_NAME, version: SERVER_VERSION });
 
+  // Older callers (and tests) may build a config without the cap; never let
+  // that mean "no cap".
+  const maxTargets = config.maxTargets ?? DEFAULT_MAX_TARGETS;
+  /** toTarget for tools that WRITE: adds the per-call cap. Explicit ids are
+   *  refused here, before any Apple Event; a selection can only be counted
+   *  inside Capture One, so resolveTargets enforces the same cap there, still
+   *  before the tool's body writes anything. */
+  const toEditTarget = (a: Parameters<typeof toTarget>[0]): Target => {
+    const t = toTarget(a);
+    if (t.variantIds && t.variantIds.length > maxTargets) {
+      throw new Error(
+        `variant_ids has ${t.variantIds.length} entries, over the limit of ${maxTargets} per editing ` +
+          "call (CAPTURE_ONE_MCP_MAX_TARGETS). Nothing was changed. Split the work into smaller batches.",
+      );
+    }
+    return { ...t, maxTargets };
+  };
+
   /** Registers a tool only if its risk level is permitted by the current
    *  configuration, so a blocked tool is invisible rather than present-and-
    *  failing. Also derives the MCP `readOnlyHint`/`destructiveHint` annotations
@@ -96,6 +126,19 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
     format: (value: R) => ToolResult = ok,
   ): void {
     if (!isAllowed(risk, config)) return;
+    // Batch-editing contract, appended once here so the wording cannot drift
+    // between the tools that share it.
+    if (CAPPED_TOOLS.has(name)) {
+      description +=
+        ` At most ${maxTargets} variants per call, counting a selection too ` +
+        "(CAPTURE_ONE_MCP_MAX_TARGETS); more is refused before anything is written, never truncated.";
+    }
+    if (PARTIAL_BATCH_TOOLS.has(name)) {
+      description +=
+        " If one variant fails partway the call stops there and returns status \"incomplete\": the " +
+        "entries already written, the failed variant with its `error`, and `unattemptedIds`. " +
+        "Inspect before retrying, and retry only the failed and unattempted ids.";
+    }
     server.registerTool(
       name,
       {
@@ -383,7 +426,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
       if (a.rating === undefined && a.color_tag === undefined && a.pick === undefined) {
         throw new Error("Supply at least one of rating, color_tag or pick.");
       }
-      return setFlags(toTarget(a), {
+      return setFlags(toEditTarget(a), {
         ...(a.rating !== undefined ? { rating: a.rating } : {}),
         ...(a.color_tag !== undefined ? { colorTag: a.color_tag } : {}),
         ...(a.pick !== undefined ? { pick: a.pick } : {}),
@@ -429,7 +472,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
         const v = (a as Record<string, unknown>)[snake];
         if (typeof v === "string") fields[camel] = v;
       }
-      return setMetadata(toTarget(a), fields);
+      return setMetadata(toEditTarget(a), fields);
     },
   );
 
@@ -450,7 +493,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
         .describe("Operate on whatever is selected in Capture One instead of explicit ids"),
       keyword: z.string().describe("Must already exist in the document"),
     },
-    async (a) => applyKeyword(toTarget(a), a.keyword),
+    async (a) => applyKeyword(toEditTarget(a), a.keyword),
   );
 
   tool(
@@ -470,7 +513,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
         .describe("Operate on whatever is selected in Capture One instead of explicit ids"),
       keyword: z.string(),
     },
-    async (a) => removeKeyword(toTarget(a), a.keyword),
+    async (a) => removeKeyword(toEditTarget(a), a.keyword),
   );
 
   // ---------------------------------------------------------------- Phase 3
@@ -527,7 +570,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
             "See co_list_adjustments for names and ranges.",
         ),
     },
-    async (a) => adjustVariants(toTarget(a), a.adjustments),
+    async (a) => adjustVariants(toEditTarget(a), a.adjustments),
   );
 
   // ---------------------------------------------------------------- Phase 4
@@ -569,7 +612,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
       name: z.string().optional().describe("Layer name; Capture One auto-names if omitted"),
       count: z.number().int().min(1).max(10).default(1),
     },
-    async (a) => createLayer(toTarget(a), a.name ?? null, a.count),
+    async (a) => createLayer(toEditTarget(a), a.name ?? null, a.count),
   );
 
   tool(
@@ -699,7 +742,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
         .optional()
         .describe("One layer per area, rather than all areas combined into one"),
     },
-    async (a) => createPeopleMask(toTarget(a), a.areas ?? null, a.separate_layers ?? null),
+    async (a) => createPeopleMask(toEditTarget(a), a.areas ?? null, a.separate_layers ?? null),
   );
 
   tool(
@@ -807,7 +850,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
         .default(120)
         .describe("How long to wait for the processing queue to drain"),
     },
-    async (a) => processVariants(toTarget(a), a.recipe ?? null, a.wait_seconds, config.allowDestructive),
+    async (a) => processVariants(toEditTarget(a), a.recipe ?? null, a.wait_seconds, config.allowDestructive),
   );
 
   tool(
@@ -839,7 +882,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
       variant_ids: z.array(z.string()).optional(),
       use_current_selection: z.boolean().default(false),
     },
-    async (a) => exportOriginals(toTarget(a)),
+    async (a) => exportOriginals(toEditTarget(a)),
   );
 
   tool(
@@ -869,7 +912,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
       variant_ids: z.array(z.string()).optional(),
       use_current_selection: z.boolean().default(false),
     },
-    async (a) => batchRename(toTarget(a)),
+    async (a) => batchRename(toEditTarget(a)),
   );
 
   tool(

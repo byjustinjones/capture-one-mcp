@@ -148,6 +148,15 @@ explicit `variant_ids` or `use_current_selection: true`, reports every id it
 could not resolve rather than silently doing less, and returns exactly what it
 changed.
 
+Each call touches at most `CAPTURE_ONE_MCP_MAX_TARGETS` variants (default 500),
+counting the current selection too; a larger request is refused before anything
+is written. Tools that write variant by variant (`co_set_flags`,
+`co_set_metadata`, `co_remove_keyword`, `co_adjust_variants`, `co_create_layer`,
+`co_create_people_mask`) return `status: "complete"` or, when one variant throws
+partway, `status: "incomplete"` with the entries already written, the failed
+variant's `error`, and `unattemptedIds` — rather than an error that loses the
+record of what changed.
+
 ### Keywords cannot be created via AppleScript
 
 Capture One 16.8.5 exposes no way to create a keyword. The `keyword` class
@@ -234,6 +243,7 @@ Snapshots land in `.testbed/` (gitignored — it contains real image metadata).
 | `CAPTURE_ONE_MCP_ALLOW_WRITE` | unset | Enables the editing tools. Read-only until set. |
 | `CAPTURE_ONE_MCP_ALLOW_DESTRUCTIVE` | unset | Additionally enables irreversible verbs. Requires the above. |
 | `CAPTURE_ONE_MCP_MAX_VARIANTS` | `500` | Cap on variants returned in one call |
+| `CAPTURE_ONE_MCP_MAX_TARGETS` | `500` | Cap on variants one editing call may touch, via `variant_ids` or the current selection. Over it is refused before any write, never truncated |
 | `CAPTURE_ONE_MCP_TIMEOUT_MS` | `20000` | Fallback Apple Event budget for calls that set none |
 | `CAPTURE_ONE_MCP_DOCUMENT` | unset | `auto` binds through a shared read-only probe before operations run; a document id binds to that one; unset disables the check |
 

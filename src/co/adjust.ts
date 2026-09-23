@@ -13,14 +13,20 @@ export interface AppliedProperty {
 }
 
 export interface AdjustResult {
+  /** "incomplete" when a variant threw partway: see `error`, `unattemptedIds`. */
+  status: "complete" | "incomplete";
   count: number;
   affected: {
     id: string;
     name: string;
     extension: string;
-    applied: Record<string, AppliedProperty>;
+    /** Absent on the entry that failed, which carries `error` instead. */
+    applied?: Record<string, AppliedProperty>;
+    error?: string;
   }[];
   notFound: string[];
+  unattemptedIds?: string[];
+  guidance?: string;
   warnings: string[];
 }
 
@@ -248,36 +254,45 @@ export async function adjustVariants(
     }
 
     const affected = [];
+    let stopped = null;
     for (let t = 0; t < targets.length; t++) {
-      const v = targets[t];
-      const a = v.adjustments();
-      const applied = {};
+      try {
+        const v = targets[t];
+        const a = v.adjustments();
+        const applied = {};
 
-      // Whole patch first, then the read-back -- see adjustLayer.
-      const writeErr = {};
-      for (let p = 0; p < props.length; p++) {
-        const key = props[p];
-        try { a[key] = args.patch[key]; } catch (e) { writeErr[key] = String(e).replace(/^Error:\\s*/, ""); }
+        // Whole patch first, then the read-back -- see adjustLayer.
+        const writeErr = {};
+        for (let p = 0; p < props.length; p++) {
+          const key = props[p];
+          try { a[key] = args.patch[key]; } catch (e) { writeErr[key] = String(e).replace(/^Error:\\s*/, ""); }
+        }
+        for (let p = 0; p < props.length; p++) {
+          const key = props[p];
+          const want = norm(args.patch[key]);
+          let err = writeErr[key] || null;
+          let actual = null;
+          let readOk = false;
+          try { actual = norm(a[key]()); readOk = true; } catch (e) { err = err || "read-back failed: " + String(e); }
+
+          const entry = { requested: want, actual: actual, matched: readOk && same(key, want, actual) };
+          if (err) entry.note = err;
+          applied[args.paramFor[key]] = entry;
+        }
+
+        const info = describeVariant(v);
+        info.applied = applied;
+        affected.push(info);
+      } catch (e) {
+        stopped = stopBatch(targets, t, e);
+        affected.push(stopped.entry);
+        break;
       }
-      for (let p = 0; p < props.length; p++) {
-        const key = props[p];
-        const want = norm(args.patch[key]);
-        let err = writeErr[key] || null;
-        let actual = null;
-        let readOk = false;
-        try { actual = norm(a[key]()); readOk = true; } catch (e) { err = err || "read-back failed: " + String(e); }
-
-        const entry = { requested: want, actual: actual, matched: readOk && same(key, want, actual) };
-        if (err) entry.note = err;
-        applied[args.paramFor[key]] = entry;
-      }
-
-      const info = describeVariant(v);
-      info.applied = applied;
-      affected.push(info);
     }
 
-    return { count: affected.length, affected: affected, notFound: notFound };
+    const out = { status: stopped ? "incomplete" : "complete", count: affected.length, affected: affected, notFound: notFound };
+    if (stopped) { out.unattemptedIds = stopped.unattemptedIds; out.guidance = stopped.guidance; }
+    return out;
     `,
     {
       args: {
@@ -292,7 +307,8 @@ export async function adjustVariants(
 
   // Surface anything that did not land, so a caller cannot read a bare success.
   for (const v of result.affected) {
-    for (const [param, entry] of Object.entries(v.applied)) {
+    if (v.error) warnings.push(`${v.name}.${v.extension}: failed and stopped the batch: ${v.error}`);
+    for (const [param, entry] of Object.entries(v.applied ?? {})) {
       if (!entry.matched) {
         warnings.push(
           `${v.name}.${v.extension}: '${param}' requested ${JSON.stringify(entry.requested)} but reads back ` +

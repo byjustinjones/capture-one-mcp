@@ -94,31 +94,40 @@ export async function createLayer(target: Target, name: string | null, count: nu
     `
     const resolved = resolveTargets(args.target);
     const out = [];
+    let stopped = null;
     for (let t = 0; t < resolved.targets.length; t++) {
-      const v = resolved.targets[t];
-      const before = v.layers().length;
-      const created = [];
-      for (let n = 0; n < args.count; n++) {
-        const props = {};
-        if (args.name) props.name = args.count > 1 ? args.name + " " + (n + 1) : args.name;
-        const made = Object.keys(props).length
-          ? co.make({ new: "layer", at: v, withProperties: props })
-          : co.make({ new: "layer", at: v });
-        created.push(String(made.name()));
+      try {
+        const v = resolved.targets[t];
+        const before = v.layers().length;
+        const created = [];
+        for (let n = 0; n < args.count; n++) {
+          const props = {};
+          if (args.name) props.name = args.count > 1 ? args.name + " " + (n + 1) : args.name;
+          const made = Object.keys(props).length
+            ? co.make({ new: "layer", at: v, withProperties: props })
+            : co.make({ new: "layer", at: v });
+          created.push(String(made.name()));
+        }
+        // Read the layer list back rather than trusting make's return value.
+        const after = v.layers().map(function (l, i) {
+          return { index: i, name: String(l.name()), kind: String(l.kind()) };
+        });
+        const info = describeVariant(v);
+        info.layersBefore = before;
+        info.layersAfter = after.length;
+        info.created = created;
+        info.layers = after;
+        info.verified = after.length === before + args.count;
+        out.push(info);
+      } catch (e) {
+        stopped = stopBatch(resolved.targets, t, e);
+        out.push(stopped.entry);
+        break;
       }
-      // Read the layer list back rather than trusting make's return value.
-      const after = v.layers().map(function (l, i) {
-        return { index: i, name: String(l.name()), kind: String(l.kind()) };
-      });
-      const info = describeVariant(v);
-      info.layersBefore = before;
-      info.layersAfter = after.length;
-      info.created = created;
-      info.layers = after;
-      info.verified = after.length === before + args.count;
-      out.push(info);
     }
-    return { variants: out, notFound: resolved.notFound };
+    const result = { status: stopped ? "incomplete" : "complete", variants: out, notFound: resolved.notFound };
+    if (stopped) { result.unattemptedIds = stopped.unattemptedIds; result.guidance = stopped.guidance; }
+    return result;
     `,
     { args: { target, name, count }, timeoutMs: 120_000, mutating: true },
   );
@@ -320,45 +329,54 @@ export async function createPeopleMask(
     `
     const resolved = resolveTargets(args.target);
     const out = [];
+    let stopped = null;
     for (let t = 0; t < resolved.targets.length; t++) {
-      const v = resolved.targets[t];
-      const before = v.layers().length;
-      const params = {};
-      if (args.areas) params.areas = args.areas;
-      if (args.separateLayers !== null) params.separateLayers = args.separateLayers;
-
-      let error = null;
       try {
-        if (Object.keys(params).length) co.createPeopleMask(v, params);
-        else co.createPeopleMask(v);
-      } catch (e) { error = String(e).replace(/^Error:\\s*/, ""); }
+        const v = resolved.targets[t];
+        const before = v.layers().length;
+        const params = {};
+        if (args.areas) params.areas = args.areas;
+        if (args.separateLayers !== null) params.separateLayers = args.separateLayers;
 
-      const after = v.layers().map(function (l, i) {
-        return { index: i, name: String(l.name()), kind: String(l.kind()), enabled: Boolean(l.enabled()) };
-      });
-      const info = describeVariant(v);
-      info.layersBefore = before;
-      info.layersAfter = after.length;
-      info.createdLayers = after.slice(before).map(function (l) { return l.name + " (" + l.kind + ")"; });
-      info.layers = after;
-      if (error) info.error = error;
-      info.requestedAreas = args.areas || ["body skin", "face skin"];
-      // Capture One creates a layer per area it actually DETECTS, not per area
-      // requested, so asking for three areas and getting two layers is a normal
-      // partial detection rather than a failure. Say which is which.
-      if (after.length === before) {
-        info.note = error
-          ? "No layers created: " + error
-          : "No layers were created and Capture One reported no error.";
-      } else if (args.separateLayers && info.createdLayers.length < info.requestedAreas.length) {
-        info.note =
-          "Partial detection: " + info.createdLayers.length + " layer(s) for " +
-          info.requestedAreas.length + " requested area(s). Areas Capture One did not find in " +
-          "this image produce no layer.";
+        let error = null;
+        try {
+          if (Object.keys(params).length) co.createPeopleMask(v, params);
+          else co.createPeopleMask(v);
+        } catch (e) { error = String(e).replace(/^Error:\\s*/, ""); }
+
+        const after = v.layers().map(function (l, i) {
+          return { index: i, name: String(l.name()), kind: String(l.kind()), enabled: Boolean(l.enabled()) };
+        });
+        const info = describeVariant(v);
+        info.layersBefore = before;
+        info.layersAfter = after.length;
+        info.createdLayers = after.slice(before).map(function (l) { return l.name + " (" + l.kind + ")"; });
+        info.layers = after;
+        if (error) info.error = error;
+        info.requestedAreas = args.areas || ["body skin", "face skin"];
+        // Capture One creates a layer per area it actually DETECTS, not per area
+        // requested, so asking for three areas and getting two layers is a normal
+        // partial detection rather than a failure. Say which is which.
+        if (after.length === before) {
+          info.note = error
+            ? "No layers created: " + error
+            : "No layers were created and Capture One reported no error.";
+        } else if (args.separateLayers && info.createdLayers.length < info.requestedAreas.length) {
+          info.note =
+            "Partial detection: " + info.createdLayers.length + " layer(s) for " +
+            info.requestedAreas.length + " requested area(s). Areas Capture One did not find in " +
+            "this image produce no layer.";
+        }
+        out.push(info);
+      } catch (e) {
+        stopped = stopBatch(resolved.targets, t, e);
+        out.push(stopped.entry);
+        break;
       }
-      out.push(info);
     }
-    return { variants: out, notFound: resolved.notFound };
+    const result = { status: stopped ? "incomplete" : "complete", variants: out, notFound: resolved.notFound };
+    if (stopped) { result.unattemptedIds = stopped.unattemptedIds; result.guidance = stopped.guidance; }
+    return result;
     `,
     { args: { target, areas, separateLayers }, timeoutMs: 300_000, mutating: true },
   );
