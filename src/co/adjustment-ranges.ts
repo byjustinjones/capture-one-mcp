@@ -9,7 +9,8 @@ export interface AdjustmentRange {
   /** Discrete values, where the property accepts only a fixed set. */
   allowed?: readonly number[];
   /** Modular properties that wrap rather than clamp (the colour-balance hues);
-   *  their bounds could not be measured, so they are not range-validated. */
+   *  their bounds could not be measured. adjust.ts limits them to 0..360 and
+   *  compares read-backs modulo 360. */
   modular?: boolean;
 }
 

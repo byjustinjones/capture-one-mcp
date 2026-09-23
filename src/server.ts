@@ -509,9 +509,11 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
     "Apply adjustments to variants — exposure, contrast, white balance, HDR recovery, clarity, " +
       "dehaze, vignetting, sharpening, noise reduction, grain, black & white, colour balance, " +
       "levels, keystone and rotation. Values are validated against the app's real limits before " +
-      "anything is written. Every property is read back afterwards and reported as " +
-      "requested/actual/matched, so a write that Capture One quietly stored differently is " +
-      "visible rather than reported as success.",
+      "anything is written. Every property is read back after the whole patch is written and " +
+      "reported as requested/actual/matched, so a write that Capture One quietly stored " +
+      "differently is visible rather than reported as success. Matching is exact except: " +
+      "temperature and tint match within 0.01 (Capture One requantises them), and the four " +
+      "color_balance_*_hue values compare modulo 360 (0 and 360 match; inputs must be 0–360).",
     {
       variant_ids: z.array(z.string()).optional(),
       use_current_selection: z.boolean().default(false),
@@ -703,7 +705,8 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
     "data",
     "Apply adjustments to a single LAYER rather than the whole variant — this is what makes an " +
       "adjustment layer useful, since the layer's mask limits where they take effect. Accepts " +
-      "the same properties and validation as co_adjust_variants, and reads every value back.",
+      "the same properties and validation as co_adjust_variants, and reads every value back " +
+      "with the same matching rules (temperature/tint within 0.01, colour-balance hues modulo 360).",
     {
       ...layerRef,
       adjustments: z

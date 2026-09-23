@@ -35,6 +35,33 @@ export function knownParams(): string[] {
  * the dictionary declares none. Validating up front means a bad value fails the
  * whole call cleanly instead of leaving a variant half-adjusted.
  */
+/**
+ * Read-back comparison rules, keyed by snake_case param.
+ *
+ * `temperature` and `tint` are stored at lower precision than they are accepted
+ * (5500 reads back as 5500.001465), so exact equality reported every white
+ * balance write as a mismatch. They match within READBACK_TOLERANCE. The four
+ * colour-balance hues wrap, and a written 0 reads back as 360, so they compare
+ * modulo 360. Everything else must read back exactly (after the 1e-6 rounding
+ * both sides get). See docs/ADJUSTMENTS.md.
+ */
+const READBACK_TOLERANCE: Record<string, number> = { temperature: 0.01, tint: 0.01 };
+
+function comparisonArgs(jxa: Record<string, unknown>): {
+  paramFor: Record<string, string>; tolerance: Record<string, number>; modular: Record<string, boolean>;
+} {
+  const paramFor: Record<string, string> = {};
+  const tolerance: Record<string, number> = {};
+  const modular: Record<string, boolean> = {};
+  for (const j of Object.keys(jxa)) {
+    const param = ADJUSTMENT_PROPERTIES.find((p) => p.jxa === j)?.param ?? j;
+    paramFor[j] = param;
+    if (READBACK_TOLERANCE[param] !== undefined) tolerance[j] = READBACK_TOLERANCE[param];
+    if (ADJUSTMENT_RANGES[param]?.modular) modular[j] = true;
+  }
+  return { paramFor, tolerance, modular };
+}
+
 function validate(patch: Record<string, unknown>): { jxa: Record<string, unknown>; warnings: string[] } {
   const jxa: Record<string, unknown> = {};
   const warnings: string[] = [];
@@ -73,10 +100,16 @@ function validate(patch: Record<string, unknown>): { jxa: Record<string, unknown
         throw new Error(`'${param}' must be <= ${range.max} (Capture One rejects higher). Got ${value}.`);
       }
       if (range?.modular) {
+        // Capture One would accept and wrap anything, but a value outside one
+        // turn is almost certainly a caller's mistake (degrees vs radians, a
+        // delta passed as an absolute), and wrapping hides it.
+        if (value < 0 || value > 360) {
+          throw new Error(`'${param}' is a hue and must be between 0 and 360 degrees. Got ${value}.`);
+        }
         warnings.push(
           `'${param}' is modular: Capture One wraps it rather than clamping, and once written it ` +
-            `cannot be set back to 0 through scripting (0 reads back as 360). Its bounds could ` +
-            `not be measured, so this value is not range-checked.`,
+            `cannot be set back to 0 through scripting (0 reads back as 360). Read-back compares ` +
+            `modulo 360, so 0 and 360 match.`,
         );
       }
     }
@@ -117,19 +150,38 @@ export async function adjustLayer(
       return String(x);
     }
 
+    // temperature/tint match within a tolerance (they are requantised on
+    // store); the colour-balance hues compare modulo 360 (0 reads back as 360).
+    function same(key, want, actual) {
+      if (typeof want === "number" && typeof actual === "number") {
+        if (args.modular && args.modular[key]) return norm(((want % 360) + 360) % 360) === norm(((actual % 360) + 360) % 360);
+        // The epsilon absorbs float noise in the subtraction itself, so a
+        // difference of exactly the tolerance is not rejected as 0.0100000001.
+        if (args.tolerance && args.tolerance[key] !== undefined) return Math.abs(want - actual) <= args.tolerance[key] + 1e-9;
+      }
+      return want === actual;
+    }
+
+    // Write the whole patch first, then read all of it back. Reading each
+    // property straight after its own write missed a later write in the same
+    // patch moving an earlier property, and reported the earlier one as landed.
+    const writeErr = {};
+    for (let p = 0; p < props.length; p++) {
+      const key = props[p];
+      try { a[key] = args.patch[key]; } catch (e) { writeErr[key] = String(e).replace(/^Error:\\s*/, ""); }
+    }
     const applied = {};
     for (let p = 0; p < props.length; p++) {
       const key = props[p];
-      const want = args.patch[key];
-      let err = null;
-      try { a[key] = want; } catch (e) { err = String(e).replace(/^Error:\\s*/, ""); }
+      const want = norm(args.patch[key]);
+      let err = writeErr[key] || null;
       // Only report a value when the read SUCCEEDED, and keep the reason when it
       // did not. A null with no reason presents an unreadable property as a value
       // mismatch, which is the jpegQuality class of silent failure.
       let actual = null;
       let readOk = false;
       try { actual = norm(a[key]()); readOk = true; } catch (e) { err = err || "read-back failed: " + String(e); }
-      const entry = { requested: norm(want), actual: actual, matched: readOk && norm(want) === actual };
+      const entry = { requested: want, actual: actual, matched: readOk && same(key, want, actual) };
       if (err) entry.note = err;
       applied[args.paramFor[key]] = entry;
     }
@@ -145,9 +197,7 @@ export async function adjustLayer(
       args: {
         ref,
         patch: jxa,
-        paramFor: Object.fromEntries(
-          Object.keys(jxa).map((j) => [j, ADJUSTMENT_PROPERTIES.find((p) => p.jxa === j)?.param ?? j]),
-        ),
+        ...comparisonArgs(jxa),
       },
       timeoutMs: 120_000,
       mutating: true,
@@ -185,23 +235,39 @@ export async function adjustVariants(
       return String(x);
     }
 
+    // temperature/tint match within a tolerance (they are requantised on
+    // store); the colour-balance hues compare modulo 360 (0 reads back as 360).
+    function same(key, want, actual) {
+      if (typeof want === "number" && typeof actual === "number") {
+        if (args.modular && args.modular[key]) return norm(((want % 360) + 360) % 360) === norm(((actual % 360) + 360) % 360);
+        // The epsilon absorbs float noise in the subtraction itself, so a
+        // difference of exactly the tolerance is not rejected as 0.0100000001.
+        if (args.tolerance && args.tolerance[key] !== undefined) return Math.abs(want - actual) <= args.tolerance[key] + 1e-9;
+      }
+      return want === actual;
+    }
+
     const affected = [];
     for (let t = 0; t < targets.length; t++) {
       const v = targets[t];
       const a = v.adjustments();
       const applied = {};
 
+      // Whole patch first, then the read-back -- see adjustLayer.
+      const writeErr = {};
       for (let p = 0; p < props.length; p++) {
         const key = props[p];
-        const want = args.patch[key];
-        let err = null;
-        try { a[key] = want; } catch (e) { err = String(e).replace(/^Error:\\s*/, ""); }
-
+        try { a[key] = args.patch[key]; } catch (e) { writeErr[key] = String(e).replace(/^Error:\\s*/, ""); }
+      }
+      for (let p = 0; p < props.length; p++) {
+        const key = props[p];
+        const want = norm(args.patch[key]);
+        let err = writeErr[key] || null;
         let actual = null;
         let readOk = false;
         try { actual = norm(a[key]()); readOk = true; } catch (e) { err = err || "read-back failed: " + String(e); }
 
-        const entry = { requested: norm(want), actual: actual, matched: readOk && norm(want) === actual };
+        const entry = { requested: want, actual: actual, matched: readOk && same(key, want, actual) };
         if (err) entry.note = err;
         applied[args.paramFor[key]] = entry;
       }
@@ -217,9 +283,7 @@ export async function adjustVariants(
       args: {
         target,
         patch: jxa,
-        paramFor: Object.fromEntries(
-          Object.keys(jxa).map((j) => [j, ADJUSTMENT_PROPERTIES.find((p) => p.jxa === j)?.param ?? j]),
-        ),
+        ...comparisonArgs(jxa),
       },
       timeoutMs: 180_000,
       mutating: true,

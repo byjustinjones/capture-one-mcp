@@ -60,8 +60,14 @@ tint        = 3      ->  reads back 2.999979
 ```
 
 Nothing is wrong, but an exact-equality check on a read-back will report a
-mismatch. `co_adjust_variants` reports `requested`, `actual` and `matched` per
-property so this is visible rather than hidden behind a bare success.
+mismatch. `co_adjust_variants` and `co_adjust_layer` report `requested`,
+`actual` and `matched` per property, and for these two `matched` means
+|requested − actual| ≤ 0.01. Every other property must read back exactly (both
+sides rounded to 1e-6), apart from the hues below.
+
+The read-back runs after **the whole patch** has been written, not after each
+property's own write, so a later write in the same patch that moves an earlier
+property shows up as a mismatch on the earlier one.
 
 ### The colour-balance hues are modular and cannot be zeroed again
 
@@ -77,8 +83,10 @@ saturation = 0  ->  reads 0.000033378600278410886
 
 Hue 360 is the same hue as 0, and a saturation of 3.3e-5 is 0.003% — the colour
 balance is neutral either way — but the stored numbers no longer match. These
-four are flagged `modular: true` and are deliberately **not** range-validated,
-since their bounds cannot be measured.
+four are flagged `modular: true`. Their bounds cannot be measured (the app wraps
+anything), so the server limits them to one turn, **0–360**, and refuses other
+values before writing. Read-back compares them **modulo 360**, so writing `0`
+and reading `360` is `matched: true`.
 
 The practical consequence is for restore logic: **never write a value that is
 already correct.** An unconditional restore that rewrote all 83 properties
