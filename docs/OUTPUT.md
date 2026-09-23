@@ -120,3 +120,12 @@ alongside the mapping so the naming is explicable rather than mysterious.
 `import` copies files in per the document's import settings — `session folder`
 here, so files land at the session root — and runs asynchronously. The resulting
 variant appears within a few seconds; poll `co_list_variants` for it.
+
+Files copied into a session's `Capture/` folder by hand do **not** appear as
+variants on their own (checked on 16.8.6: none appeared within 30 s); they need
+an import. With a destination type of `session folder` that import copies them
+again, to the session root. `current location` is the only type that imports
+files where they are. `co_get_import_settings` reads the settings without
+importing, and `co_import_images` with `require_destination_type: "current
+location"` refuses, before sending anything, if the dialog is set otherwise. The
+destination type is only changed in Capture One's Import dialog.

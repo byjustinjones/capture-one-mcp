@@ -6,7 +6,7 @@ An MCP server that drives **Capture One Pro** on macOS through its
 AppleScript/JXA scripting interface — sessions and catalogs, collections,
 variants, adjustments, layers, recipes and output.
 
-Status: **complete through Phase 5** — 42 tools. Reading and navigation, ratings
+Status: **complete through Phase 5** — 43 tools. Reading and navigation, ratings
 and metadata, the full adjustment surface, layers and masks including AI people
 masking, and output: recipes, processing with queue polling, import and batch
 rename, plus a non-destructive candidate/preview/compare workflow. Tethered
@@ -74,6 +74,7 @@ These tools are always available; none of them modifies image data.
 | `co_list_variants` | Find images — filter by rating, color tag, pick, filename, extension (case-insensitive, leading dot ignored); paginated |
 | `co_get_variant` | Full detail for one variant: EXIF, adjustments, crop, metadata, keywords, layers, outputs |
 | `co_list_recipes` / `co_get_recipe` | Output recipes and their full settings |
+| `co_get_import_settings` | The document's import destination and naming, read without importing |
 | `co_list_styles` | Available style and preset names |
 | `co_list_keywords` | Keywords in the current document |
 | `co_list_adjustments` | The 83 adjustment properties with types and measured ranges |
@@ -122,7 +123,7 @@ Editing tools, hidden unless `CAPTURE_ONE_MCP_ALLOW_WRITE=1`:
 | `co_configure_recipe` | Recipe settings, validated and read back |
 | `co_process_variants` | Render to disk, polling the queue and reporting the files written |
 | `co_export_originals` | Copy originals out |
-| `co_import_images` | Import image files (paths validated) |
+| `co_import_images` | Import image files (paths validated; `require_destination_type` refuses before importing if the destination differs) |
 | `co_create_candidates` | Clone variants into editable candidates, preserving existing edits |
 | `co_render_preview` | Render one variant to a bounded sRGB JPEG returned as an MCP image; optionally also saved to `output_path` (`return_image: false` for metadata only) |
 | `co_open_document` | Open a session or catalog by path |

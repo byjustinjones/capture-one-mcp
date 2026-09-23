@@ -74,6 +74,27 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
         ? `'${outputPath}' already exists; pass overwrite: true to replace it.`
         : `'${outputPath}' exists and is not a regular file; refusing to replace it.`);
   }
+  if (outputReal) {
+    // Checked here, before the temp folder and the private recipe exist, so a
+    // refusal leaves nothing behind. The start script repeats the check in
+    // case the document changes in between.
+    const capturesRaw = await runJxa<string | null>(`
+      const d = requireDoc();
+      if (String(d.id()) !== args.documentId) throw new Error("CO_MCP_WRONG_DOCUMENT: preview document does not match the front document.");
+      let c = null;
+      try { c = d.captures(); } catch (e) {}
+      return c ? String(c) : null;
+    `, {args: {documentId}, timeoutMs: 10_000});
+    let captures = capturesRaw && capturesRaw !== "missing value" ? capturesRaw : "";
+    while (captures.endsWith("/")) captures = captures.slice(0, -1);
+    const capturesReal = captures ? await realpath(captures).catch(() => captures) : "";
+    for (const p of [outputPath!, outputReal]) {
+      for (const c of new Set([captures, capturesReal])) {
+        if (c && (p === c || p.startsWith(c + "/")))
+          throw new Error(`output_path is inside this session's Capture folder ('${captures}'); choose another folder. Nothing was rendered.`);
+      }
+    }
+  }
   const folder = await realpath(await mkdtemp(join(tmpdir(), "capture-one-mcp-preview-")));
   const recipeName = "MCP Preview " + randomUUID();
   const args = { documentId, variantId, maxEdge, folder, recipeName,

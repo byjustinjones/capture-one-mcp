@@ -137,7 +137,9 @@ export type CaptureOneErrorCode =
   | "NO_DOCUMENT"
   | "WRONG_DOCUMENT"
   | "BUSY"
-  | "SCRIPT_ERROR";
+  | "SCRIPT_ERROR"
+  /** A refusal before anything was written; also what the server reports for a failed argument check. */
+  | "UNEXPECTED";
 
 export interface RunOptions {
   /** Wall-clock budget in ms. Long operations (process, import) need more. */
@@ -521,7 +523,9 @@ function classifyFailure(text: string, killed: boolean, timeoutMs: number, retry
   if (refused !== undefined) {
     return new CaptureOneError(
       stripErrorNumber(refused.replace(/^.*CO_MCP_REFUSED:?\s*/, "")),
-      "SCRIPT_ERROR",
+      // The same code as the server-side argument checks: both mean "refused
+      // before anything was written", and a client should branch on that once.
+      "UNEXPECTED",
     );
   }
   if (text.includes("CO_MCP_NO_DOCUMENT")) {

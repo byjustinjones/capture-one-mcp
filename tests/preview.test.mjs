@@ -138,7 +138,8 @@ test('output_path inside the session Capture folder is refused before submission
  const h=harness({captures:join(dir,'Capture')+'/'});
  try{await assert.rejects(h.run({outputPath:join(dir,'Capture','render.jpg')}),/Capture folder/);
   assert.equal(h.stats().submissions,0);
-  assert.equal(h.stats().deletions,0,'checked before the private recipe is created');}
+  assert.equal(h.stats().deletions,0,'checked before the private recipe is created');
+  assert.equal(h.stats().folder,undefined,'checked before the temp folder exists, so nothing leaks');}
  finally{await h.cleanup();await rm(dir,{recursive:true,force:true});}
 });
 test('JPEG parser rejects truncated and invalid input',()=>{

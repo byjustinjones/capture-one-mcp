@@ -558,7 +558,30 @@ const IMAGE_EXTENSIONS = new Set([
   "iiq", "fff", "3fr", "mos", "erf", "mrw", "gpr", "eip",
 ]);
 
-export async function importImages(sources: string[], allowFolders: boolean): Promise<unknown> {
+/** Import destination types in Capture One 16.8's dictionary ("import destination type"). */
+export const IMPORT_DESTINATION_TYPES = [
+  "capture folder", "session folder", "selected folder", "current location", "inside catalog", "custom",
+] as const;
+
+const IMPORT_SETTING_KEYS = [
+  "destination type", "destination folder", "destination sub folder",
+  "include subfolders", "exclude duplicates", "import naming format",
+];
+
+/** The document's import settings, read without importing anything. */
+export async function getImportSettings(): Promise<unknown> {
+  return {
+    settings: await readDocumentSettings("import settings", IMPORT_SETTING_KEYS),
+    note: "'current location' imports files where they are; every other destination type copies " +
+      "them. Change these in Capture One's Import dialog.",
+  };
+}
+
+export async function importImages(
+  sources: string[],
+  allowFolders: boolean,
+  requireDestinationType?: string,
+): Promise<unknown> {
   // Unvalidated, a single source of "/" or a home directory would pull every
   // image on the machine into the catalog, which is expensive to undo (delete
   // from the catalog AND from disk). Require absolute, existing paths, and make
@@ -581,10 +604,16 @@ export async function importImages(sources: string[], allowFolders: boolean): Pr
     throw new Error(`Refusing to import:\n  ${problems.join("\n  ")}`);
   }
 
-  const settings = await readDocumentSettings("import settings", [
-    "destination type", "destination folder", "destination sub folder",
-    "include subfolders", "exclude duplicates", "import naming format",
-  ]);
+  const settings = await readDocumentSettings("import settings", IMPORT_SETTING_KEYS);
+  // Read before importing, so a destination that would copy (or move) files
+  // somewhere unexpected is refused while nothing has happened yet.
+  if (requireDestinationType !== undefined && settings["destination type"] !== requireDestinationType) {
+    throw new Error(
+      `Refusing to import: the document's import destination type is ` +
+        `'${settings["destination type"] ?? "unreadable"}', not '${requireDestinationType}'. ` +
+        "Nothing was imported. Change it in Capture One's Import dialog, then retry.",
+    );
+  }
 
   const fired = await runJxa<{ variantsBefore: number }>(
     `

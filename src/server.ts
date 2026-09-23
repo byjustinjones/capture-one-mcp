@@ -17,7 +17,7 @@ import {
 } from "./co/edit.js";
 import { adjustLayer, adjustVariants } from "./co/adjust.js";
 import {
-  batchRename, configureRecipe, exportOriginals, importImages, outputFiles,
+  batchRename, configureRecipe, exportOriginals, importImages, getImportSettings, IMPORT_DESTINATION_TYPES, outputFiles,
   processVariants, queueStatus,
 } from "./co/process.js";
 import { RECIPE_PROPERTIES, RECIPE_UNSUPPORTED } from "./co/recipe-properties.js";
@@ -900,8 +900,24 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
         .boolean()
         .default(false)
         .describe("Permit folder sources, importing their contents recursively"),
+      require_destination_type: z
+        .enum(IMPORT_DESTINATION_TYPES)
+        .optional()
+        .describe(
+          "Refuse, before importing anything, unless the document's import destination type is " +
+            "this. 'current location' imports files where they are; every other type copies them.",
+        ),
     },
-    async (a) => importImages(a.sources, a.allow_folders),
+    async (a) => importImages(a.sources, a.allow_folders, a.require_destination_type),
+  );
+
+  tool(
+    "co_get_import_settings",
+    "read",
+    "The current document's import settings (destination type and folder, naming, duplicate " +
+      "handling), read without importing anything. Check these before co_import_images.",
+    {},
+    async () => getImportSettings(),
   );
 
   tool(
