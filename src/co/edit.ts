@@ -132,7 +132,7 @@ export async function setMetadata(
           // Per-field, so one rejected write does not abandon the call with earlier
           // fields already written and nothing reported about what landed.
           let err = null;
-          try { v[key] = want; } catch (e) { err = String(e).replace(/^Error:\s*/, ""); }
+          try { v[key] = want; } catch (e) { err = String(e).replace(/^Error:\\s*/, ""); }
           // Read back rather than echoing the request. Echoing reported a write as
           // applied even when Capture One had stored something else or nothing.
           let actual = null;

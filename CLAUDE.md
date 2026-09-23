@@ -25,7 +25,7 @@ whoever is *changing* the code.
 npm run build        # tsc -> dist/ (gitignored)
 npm run typecheck    # tsc --noEmit
 npm run verify       # typecheck + parse every embedded JXA block (42 currently)
-npm test             # build + node --test tests/*.test.mjs (146 currently)
+npm test             # build + node --test tests/*.test.mjs (190 currently)
 ```
 
 `npm run verify && npm test` is the gate for any change. Both are hermetic:
@@ -106,6 +106,9 @@ domain module.
   cooks each block and rejects them; a control character there is nearly always
   an escaping slip. Build separators with `JSON.stringify` on both sides rather
   than a literal `\0`.
+- **Double every backslash in embedded JXA.** A body is a TS template literal,
+  so `/^Error:\s*/` cooks to `/^Error:s*/` and `\/` to `/`. `check-jxa.mjs`
+  parses the *cooked* text and rejects any lone backslash; write `\\s`.
 - **Every state-changing call must pass `mutating: true`.** The timeout kills
   *our* osascript child, not the Apple Event — Capture One carries on
   processing/importing/renaming. `mutating` is what makes the timeout message

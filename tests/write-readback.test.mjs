@@ -142,3 +142,18 @@ for (const c of cases) {
     assert.equal(entry.matched, true, 'a successful round trip must still report matched');
   });
 }
+
+// The template literal carrying this body once held /^Error:\s*/, which cooks
+// to /^Error:s*/: it left " rejected" with a leading space instead of stripping
+// the prefix. bodyOf returns the cooked text, i.e. what osascript runs.
+test('co_set_metadata: a rejected write is reported without the "Error:" prefix', () => {
+  const variant = new Proxy({}, {
+    get: (_t, k) => () => 'old',
+    set: () => { throw new Error('rejected'); },
+  });
+  const result = new Function('args', 'resolveTargets', 'describeVariant', bodyOf('edit.ts', 'setMetadata'))(
+    { target: {}, fields: { contentHeadline: 'New' }, fieldFor: { contentHeadline: 'headline' } },
+    () => ({ doc: {}, targets: [variant], notFound: [] }), describeVariant,
+  );
+  assert.equal(result.affected[0].changes.headline.note, 'rejected');
+});

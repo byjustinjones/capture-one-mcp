@@ -71,7 +71,7 @@ These tools are always available; none of them modifies image data.
 | `co_get_document` | Paths, session folders, naming tokens, counters, queue depth |
 | `co_list_collections` | Albums, projects, groups, smart albums, folders, favorites |
 | `co_set_current_collection` | Focus a collection in the browser |
-| `co_list_variants` | Find images — filter by rating, color tag, pick, filename, extension; paginated |
+| `co_list_variants` | Find images — filter by rating, color tag, pick, filename, extension (case-insensitive, leading dot ignored); paginated |
 | `co_get_variant` | Full detail for one variant: EXIF, adjustments, crop, metadata, keywords, layers, outputs |
 | `co_list_recipes` / `co_get_recipe` | Output recipes and their full settings |
 | `co_list_styles` | Available style and preset names |

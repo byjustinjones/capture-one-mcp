@@ -65,6 +65,12 @@ export interface ListVariantsResult {
 const BULK_HYDRATE_MAX = 2000;
 
 export async function listVariants(input: ListVariantsInput): Promise<ListVariantsResult> {
+  // Extensions are compared lower-case and without the dot. Callers naturally
+  // write "NEF" or ".jpg", which matched nothing at all and read as "no such
+  // images" rather than as a formatting mismatch.
+  const filter = input.filter?.extensions
+    ? { ...input.filter, extensions: input.filter.extensions.map((e) => e.trim().toLowerCase().replace(/^\./, "")) }
+    : input.filter;
   return runJxa<ListVariantsResult>(
     `
     const doc = requireDoc();
@@ -314,7 +320,7 @@ export async function listVariants(input: ListVariantsInput): Promise<ListVarian
       variants: page,
     };
     `,
-    { args: { ...input, bulkHydrateMax: BULK_HYDRATE_MAX }, timeoutMs: 120_000 },
+    { args: { ...input, filter, bulkHydrateMax: BULK_HYDRATE_MAX }, timeoutMs: 120_000 },
   );
 }
 

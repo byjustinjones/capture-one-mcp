@@ -315,7 +315,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
       extensions: z
         .array(z.string())
         .optional()
-        .describe("Lower-case file extensions without the dot, e.g. ['cr3','jpg']"),
+        .describe("File extensions, e.g. ['cr3','jpg']; case-insensitive, a leading dot is ignored"),
       fields: z
         .array(z.enum(["exif", "adjustments", "crop", "metadata"]))
         .default([])

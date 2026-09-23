@@ -36,20 +36,40 @@ for (const file of walk("src")) {
   let m;
   while ((m = re.exec(src)) !== null) {
     checked++;
-    try {
-      new Function("co", "args", "requireDoc", "app", "delay", "Path", m[1]);
-    } catch (err) {
-      failed++;
-      console.error(`FAIL ${file}: embedded JXA does not parse -- ${err.message}`);
-    }
+    // Line of the body's opening backtick, for error messages.
+    const line = src.slice(0, m.index + m[0].indexOf("`") + 1).split("\n").length;
 
-    // The captured text is the RAW source; cook it the way TS would so an
-    // escape that collapses into a control character is visible.
+    // The captured text is the RAW source; cook it the way TS would, since the
+    // cooked text is what osascript actually receives.
     let cooked;
     try {
       cooked = new Function(`return \`${m[1].replace(/`/g, "\\`")}\`;`)();
     } catch {
       cooked = m[1];
+    }
+
+    // Parse the COOKED text. Parsing the raw text passed a body whose
+    // `/^Error:\s*/` cooks to `/^Error:s*/` -- a regex that silently stopped
+    // stripping "Error: " -- and one whose `\/` cooked into a `//` comment
+    // that swallowed the rest of the line.
+    try {
+      new Function("co", "args", "requireDoc", "app", "delay", "Path", cooked);
+    } catch (err) {
+      failed++;
+      console.error(`FAIL ${file}:${line}: embedded JXA does not parse -- ${err.message}`);
+    }
+
+    // A lone backslash in the raw template is almost always one of those
+    // slips: \s, \d, \. and \/ all cook to the bare character. Regex and
+    // string escapes meant for the JXA side must be written doubled (\\s).
+    const lone = /(?<!\\)(?:\\\\)*\\([^\\`$])/.exec(m[1]);
+    if (lone) {
+      failed++;
+      const at = line + m[1].slice(0, lone.index).split("\n").length - 1;
+      console.error(
+        `FAIL ${file}:${at}: lone backslash before '${lone[1]}' in embedded JXA cooks to ` +
+          `'${lone[1]}' -- write it doubled so the script sees the escape.`,
+      );
     }
     const control = [...cooked].find((ch) => {
       const c = ch.charCodeAt(0);
