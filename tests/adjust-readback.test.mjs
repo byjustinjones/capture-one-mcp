@@ -74,10 +74,15 @@ for (const [path, apply] of Object.entries(paths)) {
     assert.equal(applied.tint.matched, false, '0.02 away is a mismatch');
   });
 
-  test(`${path}: every other number must read back exactly`, async () => {
+  test(`${path}: every other number matches within float32 precision, not beyond`, async () => {
+    // Seen live on 16.8.6: rotation 2.6 reads back as 2.599998.
+    reset({ rotation: v => Math.fround(v) });
+    let applied = await apply({ rotation: 2.6 });
+    assert.equal(applied.rotation.matched, true);
+
     reset({ exposure: v => v + 0.001 });
-    const applied = await apply({ exposure: 0.5 });
-    assert.equal(applied.exposure.matched, false);
+    applied = await apply({ exposure: 0.5 });
+    assert.equal(applied.exposure.matched, false, 'a real difference is still a mismatch');
   });
 
   test(`${path}: colour-balance hues compare modulo 360`, async () => {

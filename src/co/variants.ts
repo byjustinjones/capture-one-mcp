@@ -388,7 +388,13 @@ export async function getVariant(id: string): Promise<Record<string, unknown>> {
         fileSize: safe(function () { return img.fileSize(); }),
         // dimensions is a point record {x, y}, not a string.
         dimensions: safe(function () { const d = img.dimensions(); return d ? { width: d.x, height: d.y } : null; }),
-        captureDate: str(function () { return img.exifCaptureDate(); }),
+        // A JXA Date stringifies as "Sun Jul 19 2026 22:14:23 GMT-0500 (...)";
+        // return ISO 8601 UTC, the same form co_list_variants gives.
+        captureDate: safe(function () {
+          const t = img.exifCaptureDate();
+          if (t === null || t === undefined) return null;
+          return t instanceof Date ? t.toISOString() : String(t);
+        }),
         cameraMake: str(function () { return img.exifCameraMake(); }),
         cameraModel: str(function () { return img.exifCameraModel(); }),
         lensFocalLength: str(function () { return img.exifFocalLength(); }),

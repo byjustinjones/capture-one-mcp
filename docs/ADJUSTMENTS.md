@@ -62,8 +62,9 @@ tint        = 3      ->  reads back 2.999979
 Nothing is wrong, but an exact-equality check on a read-back will report a
 mismatch. `co_adjust_variants` and `co_adjust_layer` report `requested`,
 `actual` and `matched` per property, and for these two `matched` means
-|requested − actual| ≤ 0.01. Every other property must read back exactly (both
-sides rounded to 1e-6), apart from the hues below.
+|requested − actual| ≤ 0.01. Every other real value is stored as float32 (on
+16.8.6, `rotation` 2.6 reads back as 2.599998) and matches within a relative
+1e-5; non-numeric values must read back exactly. The hues are below.
 
 The read-back runs after **the whole patch** has been written, not after each
 property's own write, so a later write in the same patch that moves an earlier

@@ -46,10 +46,11 @@ export function knownParams(): string[] {
  *
  * `temperature` and `tint` are stored at lower precision than they are accepted
  * (5500 reads back as 5500.001465), so exact equality reported every white
- * balance write as a mismatch. They match within READBACK_TOLERANCE. The four
+ * balance write as a mismatch. They match within READBACK_TOLERANCE; every other
+ * real value is float32 (rotation 2.6 reads 2.599998) and matches within a
+ * relative 1e-5. The four
  * colour-balance hues wrap, and a written 0 reads back as 360, so they compare
- * modulo 360. Everything else must read back exactly (after the 1e-6 rounding
- * both sides get). See docs/ADJUSTMENTS.md.
+ * modulo 360. Non-numeric values must read back exactly. See docs/ADJUSTMENTS.md.
  */
 const READBACK_TOLERANCE: Record<string, number> = { temperature: 0.01, tint: 0.01 };
 
@@ -164,6 +165,9 @@ export async function adjustLayer(
         // The epsilon absorbs float noise in the subtraction itself, so a
         // difference of exactly the tolerance is not rejected as 0.0100000001.
         if (args.tolerance && args.tolerance[key] !== undefined) return Math.abs(want - actual) <= args.tolerance[key] + 1e-9;
+        // Everything else is stored as float32, so 2.6 reads back as 2.599998:
+        // match within float precision rather than exactly.
+        return Math.abs(want - actual) <= 1e-5 * Math.max(1, Math.abs(want)) + 1e-9;
       }
       return want === actual;
     }
@@ -249,6 +253,9 @@ export async function adjustVariants(
         // The epsilon absorbs float noise in the subtraction itself, so a
         // difference of exactly the tolerance is not rejected as 0.0100000001.
         if (args.tolerance && args.tolerance[key] !== undefined) return Math.abs(want - actual) <= args.tolerance[key] + 1e-9;
+        // Everything else is stored as float32, so 2.6 reads back as 2.599998:
+        // match within float precision rather than exactly.
+        return Math.abs(want - actual) <= 1e-5 * Math.max(1, Math.abs(want)) + 1e-9;
       }
       return want === actual;
     }
