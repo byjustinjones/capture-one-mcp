@@ -55,6 +55,17 @@ variant's `output events` against a snapshot taken beforehand — that diff is
 what makes the reported file list *the files this call produced*, rather than
 everything the variant has ever written.
 
+**An empty queue right after submission is not a drain.** `process` returns
+before the job is guaranteed to be visible in `document.jobs`, and treating the
+first empty read as "drained" diffed output that had not been written yet. The
+queue now counts as drained only when (a) it was seen non-empty and then empty,
+(b) every requested variant with readable history has gained an output event,
+or (c) it read empty on consecutive polls spanning at least 3 seconds (the
+weak fallback for jobs too quick to catch that write nothing, e.g. under
+`skip`). The result reports which as `drainedBy`. Whether Capture One lists a
+job in `document.jobs` immediately after `process` returns has **not** been
+verified live; the rule above is safe either way.
+
 The dictionary's `processing done` and `batch done` hooks are AppleScript-file
 callbacks, so they cannot be wired to an MCP server. Polling is the only usable
 signal.

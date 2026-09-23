@@ -1,4 +1,5 @@
 import { CaptureOneError, readDocumentSettings, runJxa } from "../jxa/bridge.js";
+import { drainTracker, type DrainedBy } from "./queue-drain.js";
 import { RECIPE_PROPERTIES } from "./recipe-properties.js";
 import type { Target } from "./edit.js";
 
@@ -173,6 +174,8 @@ export interface ProcessResult {
   existingFilesBehavior: string;
   overwriteWarning?: string;
   queueDrained: boolean;
+  /** How the drain was established, when it was. See queue-drain.ts. */
+  drainedBy?: DrainedBy;
   waitedMs: number;
   newFiles: { variant: string; path: string; date: string }[];
   variantsWithNoOutput: string[];
@@ -336,6 +339,13 @@ export async function processVariants(
       ...(e instanceof CaptureOneError && e.detail !== undefined ? ([e.detail] as const) : ([] as const)),
     );
   };
+  // Output-event counts from before submission, for the variants whose history
+  // was readable. "Every one of these gained an event" is completion evidence
+  // that does not depend on ever catching the job in the queue.
+  const beforeCounts: Record<string, number> = {};
+  for (const [id, keys] of Object.entries(started.before)) if (keys) beforeCounts[id] = keys.length;
+  const drain = drainTracker();
+  let drainedBy: DrainedBy | null = null;
   // do/while so wait_seconds:0 still checks once -- the previous `while` never
   // ran its body at 0 and always reported queueDrained:false.
   do {
@@ -343,22 +353,41 @@ export async function processVariants(
     // a pin is configured, and the pin is unset by default -- so without this a
     // user clicking another window mid-wait made the poll read THAT document's
     // (empty) queue and report the batch drained while it was still rendering.
-    const pending = await runJxa<number>(
+    const poll = await runJxa<{ pending: number; allHaveNewOutput: boolean }>(
       `
       const d = requireDoc();
       if (String(d.id()) !== args.documentId) {
         throw new Error("CO_MCP_WRONG_DOCUMENT: the front document changed to '" + String(d.id()) +
           "' while waiting for processing submitted to '" + args.documentId + "' to finish.");
       }
-      return d.jobs().length;
+      const pending = d.jobs().length;
+      // An empty queue right after submission can mean "not started yet", so
+      // look for output evidence -- but only while it can still matter.
+      if (pending || !args.checkOutputs) return { pending: pending, allHaveNewOutput: false };
+      const ids = Object.keys(args.beforeCounts);
+      if (!ids.length) return { pending: 0, allHaveNewOutput: false };
+      const resolved = resolveTargets({ variantIds: ids });
+      if (resolved.notFound.length || !resolved.targets.length) return { pending: 0, allHaveNewOutput: false };
+      for (let t = 0; t < resolved.targets.length; t++) {
+        const v = resolved.targets[t];
+        let count;
+        try { count = v.outputEvents().length; } catch (e) { return { pending: 0, allHaveNewOutput: false }; }
+        if (!(count > args.beforeCounts[String(v.id())])) return { pending: 0, allHaveNewOutput: false };
+      }
+      return { pending: 0, allHaveNewOutput: true };
       `,
-      { args: { documentId: started.documentId }, timeoutMs: 20_000, mutationInFlight: true },
-    ).catch(afterSubmission<number>);
-    if (pending === 0) {
+      {
+        args: { documentId: started.documentId, beforeCounts, checkOutputs: !drain.sawJobs },
+        timeoutMs: 20_000,
+        mutationInFlight: true,
+      },
+    ).catch(afterSubmission<{ pending: number; allHaveNewOutput: boolean }>);
+    drainedBy = drain.observe(poll.pending, poll.allHaveNewOutput);
+    if (drainedBy) {
       queueDrained = true;
       break;
     }
-    await new Promise((r) => setTimeout(r, 1000));
+    if (Date.now() < deadline) await new Promise((r) => setTimeout(r, Math.min(1000, deadline - Date.now())));
   } while (Date.now() < deadline);
 
   // Re-resolve by the ids captured before the wait, never by the original
@@ -431,6 +460,7 @@ export async function processVariants(
         }
       : {}),
     queueDrained,
+    ...(drainedBy ? { drainedBy } : {}),
     waitedMs: Date.now() - t0,
     newFiles,
     variantsWithNoOutput,

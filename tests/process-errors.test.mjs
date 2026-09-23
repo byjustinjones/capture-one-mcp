@@ -8,28 +8,39 @@ import ts from 'typescript';
 const source = ts.createSourceFile('process.ts', readFileSync(new URL('../src/co/process.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
 const fn = source.statements.find(s => ts.isFunctionDeclaration(s) && s.name?.text === 'processVariants');
 const compiled = ts.transpileModule(fn.getText(source).replace(/^export /, ''), {compilerOptions: {target: ts.ScriptTarget.ES2022}}).outputText;
-function harness(processResult, afterResult = {outputs: {'1': [{path: '/export/photo.jpg', date: 'today'}]}, notFound: []}) {
+import {drainTracker} from '../dist/co/queue-drain.js';
+// `queue` is the job count each successive drain poll reads (then empty), and
+// `newOutputAtPoll` is the poll from which the variant shows a new output event.
+// Poll bodies run for real against the fake document.
+function harness(processResult, afterResult = {outputs: {'1': [{path: '/export/photo.jpg', date: 'today'}]}, notFound: []},
+  {queue = [], newOutputAtPoll = 0, waitSeconds = 0} = {}) {
   const calls = [];
-  let submissions = 0;
-  const variant = {id: () => '1', outputEvents: () => []};
+  let submissions = 0, polls = 0, pendingNow = 0, events = [];
+  const variant = {id: () => '1', outputEvents: () => events};
   const recipe = {name: () => 'Safe', existingFiles: () => 'skip'};
-  const doc = {id: () => 'test-document', recipes: () => [recipe], currentRecipe: () => recipe};
+  const doc = {id: () => 'test-document', recipes: () => [recipe], currentRecipe: () => recipe, jobs: () => new Array(pendingNow)};
+  const resolveTargets = () => ({doc, targets: [variant], notFound: []});
   const runJxa = async (body, options) => {
     calls.push(body);
     if (calls.length === 1) {
       return new Function('args', 'resolveTargets', 'describeVariant', 'co', body)(
-        options.args, () => ({doc, targets: [variant], notFound: []}),
+        options.args, resolveTargets,
         () => ({name: 'photo', extension: 'raw'}),
         {process: () => {submissions++; return processResult;}},
       );
     }
-    if (calls.length === 2) return 0;
+    if (body.includes('d.jobs()')) {
+      pendingNow = queue[polls] ?? 0;
+      if (newOutputAtPoll !== null && polls >= newOutputAtPoll) events = [{}];
+      polls++;
+      return new Function('args', 'requireDoc', 'resolveTargets', body)(options.args, () => doc, resolveTargets);
+    }
     // The diff reports both the outputs it read and the ids that no longer
     // resolve, so a variant deleted during the wait cannot silently vanish.
     return afterResult;
   };
-  const processVariants = new Function('runJxa', compiled + '\nreturn processVariants;')(runJxa);
-  return {run: () => processVariants({variantIds: ['1']}, 'Safe', 0), calls, submissions: () => submissions};
+  const processVariants = new Function('runJxa', 'drainTracker', compiled + '\nreturn processVariants;')(runJxa, drainTracker);
+  return {run: () => processVariants({variantIds: ['1']}, 'Safe', waitSeconds), calls, submissions: () => submissions, polls: () => polls};
 }
 for (const error of ['ERROR: invalid recipe', 'ERROR no variants processed', '  ERROR: output folder missing  ', 'error: rejected']) {
   test(`rejects returned error before queue polling: ${error}`, async () => {
@@ -52,6 +63,7 @@ test('accepted batch identifier reaches the result and permits output inspection
   const result = await h.run();
   assert.equal(result.batchId, 'batch-123');
   assert.equal(result.queueDrained, true);
+  assert.equal(result.drainedBy, 'completion-evidence');
   assert.deepEqual(result.newFiles, [{variant: 'photo.raw', path: '/export/photo.jpg', date: 'today'}]);
   assert.equal(h.calls.length, 3);
   assert.equal(h.submissions(), 1);
@@ -87,4 +99,22 @@ test('post-submit reads are flagged as having a mutation in flight', () => {
   const submitted = readFileSync(new URL('../src/co/process.ts', import.meta.url), 'utf8');
   const body = submitted.slice(submitted.indexOf('export async function processVariants'));
   assert.equal((body.match(/mutationInFlight: true/g) ?? []).length, 2);
+});
+
+// The job is not in document.jobs yet when the first poll runs, and the variant
+// has no new output. That empty read used to end the wait and diff output that
+// had not been written, reporting the variant as having produced nothing.
+test('a job that appears only on the second poll is waited for', async () => {
+  const h = harness('batch-123', undefined, {queue: [0, 1, 0], newOutputAtPoll: null, waitSeconds: 10});
+  const result = await h.run();
+  assert.equal(result.queueDrained, true);
+  assert.equal(result.drainedBy, 'queue-observed');
+  assert.equal(h.polls(), 3);
+});
+
+test('a single empty poll without output evidence is not reported as drained', async () => {
+  const h = harness('batch-123', undefined, {newOutputAtPoll: null, waitSeconds: 0});
+  const result = await h.run();
+  assert.equal(result.queueDrained, false);
+  assert.equal(result.drainedBy, undefined);
 });

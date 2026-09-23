@@ -21,9 +21,14 @@ The private recipe is disabled and explicitly named in the process command. Norm
 enabled recipes and the document output destination are not used. The destination
 is supplied as a JXA `Path`, as required by the scripting dictionary's file type.
 The exact file `preview.jpg` is read only after the document processing queue drains.
-This is deliberately conservative: unrelated queued work can delay a preview.
+This is deliberately conservative: unrelated queued work can delay a preview. An
+empty queue on the first poll does not count — the job may not be listed yet. The
+queue counts as drained once a job was seen and has left it, once `preview.jpg`
+exists with the queue empty, or after empty polls spanning 3 seconds.
 
-After confirmed completion, the tool removes its recipe and temporary folder. If
+After confirmed completion — the job was observed leaving the queue, or the file
+exists — the tool removes its recipe and temporary folder. A drain inferred only from
+a quiet empty queue is not confirmation: the recipe is retained and reported. If
 submission, waiting, document identity, or cleanup is uncertain, the recipe/folder
 are retained and identified in the error or `cleanupWarning`. Inspect the queue
 before retrying or manually deleting these resources. Never delete a recipe while

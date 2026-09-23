@@ -1,9 +1,10 @@
 import { constants } from "node:fs";
-import { mkdtemp, open, realpath, rm } from "node:fs/promises";
+import { lstat, mkdtemp, open, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import { CaptureOneError, runJxa } from "../jxa/bridge.js";
+import { drainTracker } from "./queue-drain.js";
 
 export interface PreviewOptions { documentId: string; variantId: string; maxEdge?: number; waitSeconds?: number }
 export interface PreviewResult {
@@ -48,6 +49,11 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
   const recipeName = "MCP Preview " + randomUUID();
   const args = { documentId, variantId, maxEdge, folder, recipeName };
   let drained = false;
+  // Stronger than drained: the job was seen and left the queue, or its output
+  // exists. A quiet-period drain alone cannot rule out a job that simply has
+  // not appeared yet, and deleting the recipe under such a job is the mistake
+  // cleanup must never make.
+  let completed = false;
   let batchId = "";
   let result: PreviewResult | undefined;
   let failure: unknown;
@@ -96,6 +102,8 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
     `, {args, mutating: true, timeoutMs: 60_000});
     batchId = started.batchId;
     const deadline = Date.now() + waitSeconds * 1000;
+    const drain = drainTracker();
+    const outputPath = join(folder, "preview.jpg");
     do {
       const pending = await runJxa<number>(`
         const d = requireDoc();
@@ -106,11 +114,22 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
       // was killed and the call reported "did not respond within 0s" instead of
       // the honest "queue did not drain before the deadline" below. The loop
       // condition, not this timeout, is what bounds the total wait.
-      `, {args, timeoutMs: Math.min(10_000, Math.max(5_000, deadline - Date.now()))});
-      if (pending === 0) { drained = true; break; }
+      `, {args, mutationInFlight: true, timeoutMs: Math.min(10_000, Math.max(5_000, deadline - Date.now()))});
+      // The rendered file existing is completion evidence even if the job was
+      // never caught in the queue. Checked only once the queue reads empty, so
+      // a file still being written by a pending job is not mistaken for done.
+      const fileSeen = pending === 0 && await lstat(outputPath).then(st => st.isFile(), () => false);
+      if (fileSeen) completed = true;
+      const drainedBy = drain.observe(pending, fileSeen);
+      if (drainedBy) {
+        drained = true;
+        if (drainedBy === "queue-observed") completed = true;
+        break;
+      }
       if (Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, Math.min(500, deadline - Date.now())));
     } while (Date.now() < deadline);
     if (!drained) throw new Error("Preview queue did not drain before the deadline; do not retry blindly.");
+    if (!completed) throw new Error("The queue stayed empty but no preview job was observed and no preview file appeared; the job may still be pending. Do not retry blindly.");
     const file = await open(join(folder, "preview.jpg"), constants.O_RDONLY | constants.O_NOFOLLOW);
     let data: Buffer;
     try {
@@ -134,7 +153,7 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
   } catch (error) { failure = error; }
   // Never delete a recipe/folder after uncertain submission or while jobs may remain.
   let cleanupWarning: string | undefined;
-  if (drained) {
+  if (drained && completed) {
     try {
       await runJxa(`
         const d = requireDoc();
@@ -146,6 +165,11 @@ export async function renderPreview(options: PreviewOptions): Promise<PreviewRes
       `, {args, mutating:true, timeoutMs:10_000});
       await rm(folder, {recursive:true, force:true});
     } catch (error) { cleanupWarning = `Retained recipe '${recipeName}' and folder '${folder}': ${String(error)}`; }
+  } else if (drained) {
+    cleanupWarning =
+      `Retained recipe '${recipeName}' and folder '${folder}': the queue stayed empty but no job ` +
+      "was ever observed and no preview file appeared, so the job may still be pending. Inspect " +
+      "the processing queue before removing either.";
   } else {
     cleanupWarning =
       `Temp folder '${folder}' retained. If processing was submitted, recipe '${recipeName}' is ` +

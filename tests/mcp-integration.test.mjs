@@ -38,14 +38,21 @@ test('MCP processing honors policy and reports submission errors end to end', as
     }
     function application(behavior, submission = 'batch-123') {
       const state = { submissions: [], queueReads: 0 };
-      const variant = { id: () => 1, name: () => 'test', parentImage: () => ({ extension: () => 'jpg' }), outputEvents: () => [] };
+      // A successful submission leaves an output event behind: the completion
+      // evidence that lets a zero-second wait report the queue drained.
+      let events = [];
+      const variant = { id: () => 1, name: () => 'test', parentImage: () => ({ extension: () => 'jpg' }), outputEvents: () => events };
       const variants = () => [variant];
       variants[0] = variant;
       variants.id = () => [1];
       const recipe = { name: () => 'Export', existingFiles: () => behavior };
       const doc = { id: () => 'test-document', variants, recipes: () => [recipe], currentRecipe: () => recipe,
         jobs: () => { state.queueReads++; return []; } };
-      co = { currentDocument: () => doc, process: (_targets, options) => { state.submissions.push(options); return submission; } };
+      co = { currentDocument: () => doc, process: (_targets, options) => {
+        state.submissions.push(options);
+        events = [{ path: () => '/export/test.jpg', date: () => 'now' }];
+        return submission;
+      } };
       return state;
     }
     await t.test('read-only server has no processing tool', async () => {
