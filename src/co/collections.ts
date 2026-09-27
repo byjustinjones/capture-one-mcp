@@ -46,11 +46,11 @@ export async function setCurrentCollection(nameOrId: string): Promise<Collection
   return runJxa<CollectionSummary>(
     `
     const d = requireDoc();
-    const wanted = String(args.nameOrId).toLowerCase();
+    const wanted = String(args.nameOrId).normalize("NFC").toLowerCase();
     const cols = d.collections();
     for (let i = 0; i < cols.length; i++) {
       const c = cols[i];
-      if (String(c.name()).toLowerCase() === wanted || String(c.id()) === args.nameOrId) {
+      if (String(c.name()).normalize("NFC").toLowerCase() === wanted || String(c.id()) === args.nameOrId) {
         d.currentCollection = c;
         return {
           name: String(c.name()), id: String(c.id()), kind: String(c.kind()),

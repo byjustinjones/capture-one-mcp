@@ -18,6 +18,16 @@ import { execFile } from "node:child_process";
 export const CAPTURE_ONE_APP = "Capture One";
 
 /**
+ * Unicode-aware equality for document ids. Capture One reports paths in
+ * decomposed form (NFD: "c" + U+0327) while typed or model-produced text is
+ * usually composed (NFC: "ç"), so a byte comparison refuses the right document.
+ * Embedded JXA compares the same way, inline, with .normalize("NFC").
+ */
+export function sameText(a: unknown, b: unknown): boolean {
+  return String(a).normalize("NFC") === String(b).normalize("NFC");
+}
+
+/**
  * Optional guard against writing to the wrong document.
  *
  * Variant ids are small per-document integers ("641", "3480"), so an id read
@@ -96,7 +106,7 @@ export function bindOpenedDocument(id: string): void {
     latchedDocumentId = id;
     return;
   }
-  if (lock.documentId && lock.documentId !== id) {
+  if (lock.documentId && !sameText(lock.documentId, id)) {
     throw new CaptureOneError(
       `Opened '${id}', but this server is bound to '${lock.documentId}', so every call against ` +
         "the newly opened document will be refused. Reconnect the server to work on it.",
@@ -305,7 +315,7 @@ export async function runJxa<T>(body: string, options: RunOptions = {}): Promise
         const d = co.currentDocument();
         if (!d) throw new Error("CO_MCP_NO_DOCUMENT");
         __documentIdSeen = String(d.id());
-        if (__pinnedDocumentId && __documentIdSeen !== __pinnedDocumentId) {
+        if (__pinnedDocumentId && __documentIdSeen.normalize("NFC") !== __pinnedDocumentId.normalize("NFC")) {
           throw new Error(
             "CO_MCP_WRONG_DOCUMENT: front document is '" + String(d.id()) +
             "' but this server is pinned to '" + __pinnedDocumentId + "'."

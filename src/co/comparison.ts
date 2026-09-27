@@ -83,9 +83,9 @@ export async function compareVariants(input: VariantComparisonInput) {
     throw new Error("Provide two distinct variant ids for the original and candidate.");
   }
   const source = await getVariant(input.sourceVariantId);
-  if (record(source.document).id !== input.documentId) throw new Error("Source snapshot does not match the expected document identity.");
+  if (String(record(source.document).id).normalize("NFC") !== input.documentId.normalize("NFC")) throw new Error("Source snapshot does not match the expected document identity.");
   const candidate = await getVariant(input.candidateVariantId);
-  if (record(candidate.document).id !== input.documentId) throw new Error("Candidate snapshot does not match the expected document identity.");
+  if (String(record(candidate.document).id).normalize("NFC") !== input.documentId.normalize("NFC")) throw new Error("Candidate snapshot does not match the expected document identity.");
   if (source.id !== input.sourceVariantId || candidate.id !== input.candidateVariantId) throw new Error("Variant identity changed while reading comparison snapshots.");
   return compareVariantSnapshots(source, candidate);
 }

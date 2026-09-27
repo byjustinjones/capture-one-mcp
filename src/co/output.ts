@@ -24,11 +24,11 @@ export async function getRecipe(name: string): Promise<Record<string, unknown>> 
   return runJxa<Record<string, unknown>>(
     `
     const d = requireDoc();
-    const wanted = String(args.name).toLowerCase();
+    const wanted = String(args.name).normalize("NFC").toLowerCase();
     const rs = d.recipes();
     let r = null;
     for (let i = 0; i < rs.length; i++) {
-      if (String(rs[i].name()).toLowerCase() === wanted) { r = rs[i]; break; }
+      if (String(rs[i].name()).normalize("NFC").toLowerCase() === wanted) { r = rs[i]; break; }
     }
     if (!r) throw new Error("No recipe named '" + args.name + "'");
     // Normalise undefined to null as well as catching. JSON.stringify DROPS an

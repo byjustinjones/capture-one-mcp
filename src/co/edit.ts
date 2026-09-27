@@ -188,11 +188,11 @@ export async function applyKeyword(target: Target, keyword: string): Promise<Edi
     const targets = resolved.targets;
     const notFound = resolved.notFound;
 
-    const wantedName = String(args.keyword).toLowerCase();
+    const wantedName = String(args.keyword).normalize("NFC").toLowerCase();
     const existing = d.keywords();
     let kw = null;
     for (let i = 0; i < existing.length; i++) {
-      if (String(existing[i].name()).toLowerCase() === wantedName) { kw = existing[i]; break; }
+      if (String(existing[i].name()).normalize("NFC").toLowerCase() === wantedName) { kw = existing[i]; break; }
     }
 
     if (!kw) {
@@ -245,7 +245,7 @@ export async function removeKeyword(target: Target, keyword: string): Promise<
     const targets = resolved.targets;
     const notFound = resolved.notFound;
 
-    const wantedName = String(args.keyword).toLowerCase();
+    const wantedName = String(args.keyword).normalize("NFC").toLowerCase();
     const affected = [];
 
     let stopped = null;
@@ -255,7 +255,7 @@ export async function removeKeyword(target: Target, keyword: string): Promise<
         const kws = v.keywords();
         let removed = false;
         for (let k = kws.length - 1; k >= 0; k--) {
-          if (String(kws[k].name()).toLowerCase() === wantedName) {
+          if (String(kws[k].name()).normalize("NFC").toLowerCase() === wantedName) {
             co.delete(kws[k]);
             removed = true;
           }
@@ -273,7 +273,7 @@ export async function removeKeyword(target: Target, keyword: string): Promise<
     let survives = false;
     const after = d.keywords();
     for (let i = 0; i < after.length; i++) {
-      if (String(after[i].name()).toLowerCase() === wantedName) { survives = true; break; }
+      if (String(after[i].name()).normalize("NFC").toLowerCase() === wantedName) { survives = true; break; }
     }
 
     const out = {

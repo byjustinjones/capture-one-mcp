@@ -75,7 +75,7 @@ export async function configureRecipe(
     const rs = d.recipes();
     let r = null;
     for (let i = 0; i < rs.length; i++) {
-      if (String(rs[i].name()).toLowerCase() === String(args.recipeName).toLowerCase()) { r = rs[i]; break; }
+      if (String(rs[i].name()).normalize("NFC").toLowerCase() === String(args.recipeName).normalize("NFC").toLowerCase()) { r = rs[i]; break; }
     }
     if (!r) {
       const names = rs.map(function (x) { return String(x.name()); });
@@ -232,7 +232,7 @@ export async function processVariants(
     let chosen = null;
     if (recipeName) {
       for (let i = 0; i < rs.length; i++) {
-        if (String(rs[i].name()).toLowerCase() === String(recipeName).toLowerCase()) { chosen = rs[i]; break; }
+        if (String(rs[i].name()).normalize("NFC").toLowerCase() === String(recipeName).normalize("NFC").toLowerCase()) { chosen = rs[i]; break; }
       }
       if (!chosen) {
         throw new Error("No recipe named '" + recipeName + "'. Available: " +

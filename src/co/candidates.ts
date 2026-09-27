@@ -41,7 +41,7 @@ export async function createCandidates(input: CreateCandidatesInput): Promise<Cr
     const doc = requireDoc();
     const document = { id: String(doc.id()), name: String(doc.name()) };
     function assertDocument() {
-      if (String(requireDoc().id()) !== args.documentId) {
+      if (String(requireDoc().id()).normalize("NFC") !== String(args.documentId).normalize("NFC")) {
         throw new Error("CO_MCP_WRONG_DOCUMENT: candidate document does not match requested document.");
       }
     }
