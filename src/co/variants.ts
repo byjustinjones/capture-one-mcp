@@ -98,10 +98,10 @@ export async function listVariants(input: ListVariantsInput): Promise<ListVarian
     } else {
       let col = null;
       if (args.collection) {
-        const wanted = String(args.collection).toLowerCase();
+        const wanted = String(args.collection).normalize("NFC").toLowerCase();
         const all = doc.collections();
         for (let i = 0; i < all.length; i++) {
-          if (String(all[i].name()).toLowerCase() === wanted || String(all[i].id()) === args.collection) {
+          if (String(all[i].name()).normalize("NFC").toLowerCase() === wanted || String(all[i].id()) === args.collection) {
             col = all[i];
             break;
           }
@@ -170,7 +170,7 @@ export async function listVariants(input: ListVariantsInput): Promise<ListVarian
       if (f.maxRating != null && rating > f.maxRating) continue;
       if (f.colorTags != null && f.colorTags.indexOf(colorTag) === -1) continue;
       if (f.pick != null && Boolean(picks[i]) !== f.pick) continue;
-      if (f.nameContains && name.toLowerCase().indexOf(String(f.nameContains).toLowerCase()) === -1) continue;
+      if (f.nameContains && name.normalize("NFC").toLowerCase().indexOf(String(f.nameContains).normalize("NFC").toLowerCase()) === -1) continue;
       if (f.extensions != null && f.extensions.indexOf(ext) === -1) continue;
 
       rows.push({

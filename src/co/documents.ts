@@ -1,5 +1,5 @@
 import { dirname } from "node:path";
-import { bindOpenedDocument, CaptureOneError, documentLock, runJxa } from "../jxa/bridge.js";
+import { bindOpenedDocument, CaptureOneError, documentLock, runJxa, sameText } from "../jxa/bridge.js";
 
 export interface DocumentSummary {
   name: string;
@@ -84,7 +84,7 @@ export async function openDocument(path: string): Promise<DocumentSummary> {
   // bindOpenedDocument is the authoritative one; this only fails early.
   const lock = documentLock();
   const expectedId = dirname(path);
-  if (lock.documentId && lock.documentId.replace(/\/+$/, "") !== expectedId) {
+  if (lock.documentId && !sameText(lock.documentId.replace(/\/+$/, ""), expectedId)) {
     throw new CaptureOneError(
       `Refusing to open '${path}': this server is bound to '${lock.documentId}' ` +
         `(${lock.mode === "fixed" ? "CAPTURE_ONE_MCP_DOCUMENT" : "auto binding"}), and opening another ` +

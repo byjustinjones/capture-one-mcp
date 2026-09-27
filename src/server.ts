@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 
-import { CaptureOneError, documentLock } from "./jxa/bridge.js";
+import { CaptureOneError, documentLock, sameText } from "./jxa/bridge.js";
 import { healthCheck } from "./jxa/health.js";
 import { DEFAULT_MAX_TARGETS, isAllowed, loadConfig, type RiskLevel, type ServerConfig } from "./config.js";
 import { getDocument, listDocuments, openDocument } from "./co/documents.js";
@@ -210,7 +210,7 @@ export function createServer(config: ServerConfig = loadConfig()): McpServer {
             return { mode: "auto", documentId: null, note: "Will bind to the first document it touches." };
           }
           const mismatch =
-            lock.documentId && health.document && health.document.id !== lock.documentId;
+            lock.documentId && health.document && !sameText(health.document.id, lock.documentId);
           return {
             mode: lock.mode,
             documentId: lock.documentId,
